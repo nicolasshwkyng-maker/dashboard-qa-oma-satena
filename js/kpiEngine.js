@@ -155,11 +155,14 @@ QA.kpiEngine = (function () {
   }
 
   /** Dona "Auditorías por Cierre": rollup calculado a partir de los
-   * hallazgos vinculados a cada auditoría (ver statusEngine#computeAuditoriaRollup). */
+   * hallazgos vinculados a cada auditoría EJECUTADA (ver
+   * statusEngine#computeAuditoriaRollup) — las que aún no se ejecutan no
+   * tienen "cierreRollup" (null) y quedan fuera de este gráfico. */
   function auditoriasPorCierre(audits) {
-    const order = ["Cerrada", "Abierta", "Cierre Parcial", "Sin hallazgos"];
+    const order = ["Cerrada", "Abierta", "Cierre Parcial"];
     const labelFor = { CERRADO: "Cerrada", ABIERTO: "Abierta", CIERRE_PARCIAL: "Cierre Parcial" };
-    const counts = countBy(audits, a => labelFor[a.cierreRollup] || "Sin hallazgos");
+    const ejecutadas = audits.filter(a => a.cierreRollup);
+    const counts = countBy(ejecutadas, a => labelFor[a.cierreRollup]);
     const map = new Map(counts);
     return order.map(label => ({ label, value: map.get(label) || 0 }));
   }

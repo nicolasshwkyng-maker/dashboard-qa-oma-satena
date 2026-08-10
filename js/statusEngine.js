@@ -48,16 +48,18 @@ QA.statusEngine = (function () {
   }
 
   /**
-   * Rollup de cierre a nivel Auditoría, a partir del cierre de TODOS sus
+   * Rollup de cierre a nivel Auditoría, a partir del cierre de sus
    * hallazgos vinculados: Cerrada si todos cerrados, Abierta si todos
    * abiertos, Cierre Parcial si hay mezcla (o si algún hallazgo individual
-   * ya está marcado como Cierre Parcial). null si la auditoría no tiene
-   * hallazgos vinculados (no aplica).
+   * ya está marcado como Cierre Parcial). Solo aplica a auditorías
+   * EJECUTADAS (las demás no tienen nada que "cerrar" todavía → null, no
+   * entran en el gráfico). Una auditoría ejecutada SIN hallazgos vinculados
+   * se considera Cerrada: se ejecutó y no dejó nada pendiente por resolver.
    */
-  function computeAuditoriaRollup(hallazgosDeLaAuditoria) {
-    if (!hallazgosDeLaAuditoria || !hallazgosDeLaAuditoria.length) return null;
-    const cierres = hallazgosDeLaAuditoria.map(computeCierreHallazgo).filter(Boolean);
-    if (!cierres.length) return null;
+  function computeAuditoriaRollup(estadoCalculado, hallazgosDeLaAuditoria) {
+    if (estadoCalculado !== ESTADOS.EJECUTADA) return null;
+    const cierres = (hallazgosDeLaAuditoria || []).map(computeCierreHallazgo).filter(Boolean);
+    if (!cierres.length) return CIERRE.CERRADO;
     if (cierres.some(c => c === CIERRE.CIERRE_PARCIAL)) return CIERRE.CIERRE_PARCIAL;
     const todosCerrados = cierres.every(c => c === CIERRE.CERRADO);
     const todosAbiertos = cierres.every(c => c === CIERRE.ABIERTO);
@@ -86,7 +88,7 @@ QA.statusEngine = (function () {
     audits.forEach((audit) => {
       audit.estadoCalculado = computeEstado(audit);
       audit.donutBucket = computeDonutBucket(audit);
-      audit.cierreRollup = computeAuditoriaRollup(findingsByAuditId ? findingsByAuditId.get(audit.id) : null);
+      audit.cierreRollup = computeAuditoriaRollup(audit.estadoCalculado, findingsByAuditId ? findingsByAuditId.get(audit.id) : null);
       audit.diasParaVencer = audit.fechaProgramada ? u.daysBetween(new Date(), new Date(audit.fechaProgramada)) : null;
     });
     return audits;

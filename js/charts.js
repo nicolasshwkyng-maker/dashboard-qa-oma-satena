@@ -38,7 +38,6 @@ QA.charts = (function () {
     "Cerrada": PALETTE.verde,
     "Abierta": PALETTE.rojo,
     "Cierre Parcial": PALETTE.amber,
-    "Sin hallazgos": PALETTE.grisM,
   };
 
   const CATEGORY_SERIES_COLORS = Object.values(QA.config.CATEGORY_COLORS).map(c => c[0]);
