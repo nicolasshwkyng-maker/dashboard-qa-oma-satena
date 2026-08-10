@@ -195,6 +195,14 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .qa-kpi-card--gris { border-top-color: var(--gris-m); }
 .qa-kpi-card--gris .qa-kpi-value { color: var(--gris-m); }
 
+/* Resumen de texto bajo el gauge "Brecha de Ejecución" */
+.qa-brecha-texto { display: flex; gap: 24px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
+.qa-brecha-item { text-align: center; }
+.qa-brecha-item .val { font-family: var(--font-mono); font-size: 20px; font-weight: 600; }
+.qa-brecha-item .lbl { font-size: 10.5px; color: var(--gris-m); text-transform: uppercase; letter-spacing: .03em; }
+.qa-brecha-item.ok .val { color: #3B6D11; }
+.qa-brecha-item.behind .val { color: #A32D2D; }
+
 /* Fila expandible de descripción de hallazgo (tabla de Hallazgos) */
 .qa-details-control { cursor: pointer; color: var(--azul-m); font-weight: 600; width: 28px; }
 .qa-finding-detail { background: var(--gris-l); border-radius: 6px; padding: 10px 14px; font-size: 12.5px; color: var(--gris); }

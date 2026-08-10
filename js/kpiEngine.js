@@ -95,6 +95,33 @@ QA.kpiEngine = (function () {
   }
 
   /* ------------------------------------------------------------------ *
+   * Avance esperado vs real, con corte a hoy (para el gauge "Brecha de
+   * Ejecución"). Solo considera auditorías PROGRAMADAS (las extraordinarias
+   * no tenían fecha comprometida desde el inicio, así que no aplican a
+   * "cuánto debería llevar hoy" del cronograma original).
+   *   - esperadoPct: % de lo programado cuya fecha ya pasó (debería estar
+   *     ejecutado a esta altura del cronograma).
+   *   - realPct: % de lo programado que realmente está ejecutado hoy
+   *     (igual criterio que cumplimientoOriginalPct).
+   *   - brechaPct: real - esperado. Negativo = atrasado, positivo = adelantado.
+   * ------------------------------------------------------------------ */
+  function avanceEsperadoVsReal(audits, today) {
+    today = today || new Date();
+    const programadas = audits.filter(a => !a.esExtraordinaria);
+    const total = programadas.length;
+    const deberianEstarHechas = programadas.filter(a => a.fechaProgramada && a.fechaProgramada.getTime() <= today.getTime()).length;
+    const ejecutadasProgramadas = programadas.filter(a => a.estadoCalculado === EST.EJECUTADA).length;
+    const esperadoPct = total ? (deberianEstarHechas / total) * 100 : 0;
+    const realPct = total ? (ejecutadasProgramadas / total) * 100 : 0;
+    return {
+      total, deberianEstarHechas, ejecutadasProgramadas,
+      esperadoPct: Math.round(esperadoPct * 10) / 10,
+      realPct: Math.round(realPct * 10) / 10,
+      brechaPct: Math.round((realPct - esperadoPct) * 10) / 10,
+    };
+  }
+
+  /* ------------------------------------------------------------------ *
    * Programa: programadas vs ejecutadas por mes (+ extraordinarias)
    * ------------------------------------------------------------------ */
   /** Se ubica cada auditoría por "fechaReferencia" (ver
@@ -184,7 +211,7 @@ QA.kpiEngine = (function () {
   }
 
   return {
-    computeKpis, programaPorMes, porClasificacion, porModalidad, porUbicacion, faaPorCategoria, porTipoRegistro,
+    computeKpis, avanceEsperadoVsReal, programaPorMes, porClasificacion, porModalidad, porUbicacion, faaPorCategoria, porTipoRegistro,
     estadoPrograma, auditoriasPorCierre, hallazgosPorEstado, hallazgosPorClasificacion, hallazgosPorProceso,
     hallazgosTendenciaMensual, hallazgosEmitidosVsCerrados,
   };

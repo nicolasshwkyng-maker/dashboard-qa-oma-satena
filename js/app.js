@@ -273,6 +273,20 @@
     ].join("");
   }
 
+  /** Texto bajo el gauge "Brecha de Ejecución": Real / Meta hoy / Brecha,
+   * con color según si va adelantado (verde) o atrasado (rojo) el cronograma. */
+  function renderBrechaResumen(g) {
+    const el = document.getElementById("brechaResumenTexto");
+    if (!el) return;
+    const ok = g.brechaPct >= 0;
+    const brechaTexto = (ok ? "+" : "") + g.brechaPct + " pts";
+    el.innerHTML = `
+      <div class="qa-brecha-item"><div class="val">${g.realPct}%</div><div class="lbl">Avance Real</div></div>
+      <div class="qa-brecha-item"><div class="val">${g.esperadoPct}%</div><div class="lbl">Meta a Hoy</div></div>
+      <div class="qa-brecha-item ${ok ? "ok" : "behind"}"><div class="val">${brechaTexto}</div><div class="lbl">Brecha (${ok ? "adelantado" : "atrasado"})</div></div>
+    `;
+  }
+
   /** KPI simples para las secciones Auditorías / Inspecciones (subconjunto
    * ya filtrado por tipoRegistro — ver renderEverything). */
   function renderSubsectionKpis(gridId, subset) {
@@ -544,6 +558,7 @@
     renderKpis(k);
 
     QA.charts.renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo);
+    renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsReal(auditoriasSoloTipo));
     renderSubsectionKpis("kpiGridPrograma", auditoriasSoloTipo);
     renderSubsectionKpis("kpiGridInspecciones", inspeccionesSoloTipo);
     QA.tables.updateAuditoriasTable(auditoriasSoloTipo, openAuditoriaForm);

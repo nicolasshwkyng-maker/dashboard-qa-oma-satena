@@ -92,6 +92,68 @@ QA.charts = (function () {
   }
 
   /* ------------------------------------------------------------------ *
+   * BRECHA DE EJECUCIÓN — barra tipo "gauge": qué tanto debería llevar el
+   * cronograma hoy (marcador punteado) vs qué tanto lleva realmente (barra
+   * coloreada). Verde si va igual o adelantado, rojo si va atrasado.
+   * ------------------------------------------------------------------ */
+  function metaMarkerPlugin(esperadoPct) {
+    return {
+      id: "metaMarker",
+      afterDatasetsDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales.x) return;
+        const x = scales.x.getPixelForValue(esperadoPct);
+        ctx.save();
+        ctx.strokeStyle = PALETTE.gris;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = PALETTE.gris;
+        ctx.font = "600 11px 'IBM Plex Sans', sans-serif";
+        const label = `Meta hoy: ${esperadoPct}%`;
+        const textWidth = ctx.measureText(label).width;
+        const nearRightEdge = x + textWidth + 8 > chartArea.right;
+        ctx.textAlign = nearRightEdge ? "right" : "left";
+        ctx.fillText(label, x + (nearRightEdge ? -6 : 6), chartArea.top - 8);
+        ctx.restore();
+      },
+    };
+  }
+
+  function renderAvanceGauge(d) {
+    const canvas = document.getElementById("chartAvanceGauge");
+    if (!canvas) return;
+    if (instances.chartAvanceGauge) instances.chartAvanceGauge.destroy();
+    const color = d.realPct >= d.esperadoPct ? PALETTE.verde : PALETTE.rojo;
+    const scaleMax = Math.max(100, d.realPct, d.esperadoPct);
+    instances.chartAvanceGauge = new Chart(canvas.getContext("2d"), {
+      type: "bar",
+      data: { labels: ["Avance"], datasets: [{ data: [d.realPct], backgroundColor: color, borderRadius: 6, barThickness: 40 }] },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { top: 22 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: () => `Avance real: ${d.realPct}%` } },
+        },
+        scales: {
+          x: { min: 0, max: scaleMax, grid: { color: "#EDEBE3" }, ticks: { callback: (v) => v + "%" } },
+          y: { display: false },
+        },
+      },
+      plugins: [metaMarkerPlugin(d.esperadoPct)],
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * PROGRAMA
    * ------------------------------------------------------------------ */
   function renderProgramaPorMes(d) {
@@ -204,6 +266,7 @@ QA.charts = (function () {
   function renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo) {
     // Resumen Ejecutivo: SOLO Auditorías (tipoRegistro AUDITORIA) — las
     // Inspecciones no deben sumar aquí, tienen su propio resumen aparte.
+    renderAvanceGauge(QA.kpiEngine.avanceEsperadoVsReal(auditoriasSoloTipo));
     renderProgramaPorMes(QA.kpiEngine.programaPorMes(auditoriasSoloTipo));
     renderEstadoPrograma(QA.kpiEngine.estadoPrograma(auditoriasSoloTipo));
     renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(auditoriasSoloTipo));
