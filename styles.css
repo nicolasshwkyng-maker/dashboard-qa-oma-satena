@@ -180,6 +180,10 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
   color: var(--gris-m); margin: 0 0 8px 2px;
 }
+/* Ancho de columna FIJO (no 1fr) para que las tarjetas midan lo mismo sin
+   importar cuántas haya en cada grupo — con 1fr, un grupo de 1 tarjeta
+   (ej. "Alertas") se estiraba a ocupar toda la fila. */
+.qa-kpi-group .qa-kpi-grid { grid-template-columns: repeat(auto-fill, 170px); }
 .qa-kpi-card--teal { border-top-color: #0F6E56; }
 .qa-kpi-card--teal .qa-kpi-value { color: #0F6E56; }
 .qa-kpi-card--morado { border-top-color: #534AB7; }
