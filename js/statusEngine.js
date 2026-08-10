@@ -54,12 +54,14 @@ QA.statusEngine = (function () {
    * ya está marcado como Cierre Parcial). Solo aplica a auditorías
    * EJECUTADAS (las demás no tienen nada que "cerrar" todavía → null, no
    * entran en el gráfico). Una auditoría ejecutada SIN hallazgos vinculados
-   * se considera Cerrada: se ejecutó y no dejó nada pendiente por resolver.
+   * TODAVÍA se considera Abierta: la ausencia de hallazgos registrados no
+   * confirma que no haya nada pendiente, solo que su determinación sigue
+   * en curso — no se cierra hasta que se confirme explícitamente.
    */
   function computeAuditoriaRollup(estadoCalculado, hallazgosDeLaAuditoria) {
     if (estadoCalculado !== ESTADOS.EJECUTADA) return null;
     const cierres = (hallazgosDeLaAuditoria || []).map(computeCierreHallazgo).filter(Boolean);
-    if (!cierres.length) return CIERRE.CERRADO;
+    if (!cierres.length) return CIERRE.ABIERTO;
     if (cierres.some(c => c === CIERRE.CIERRE_PARCIAL)) return CIERRE.CIERRE_PARCIAL;
     const todosCerrados = cierres.every(c => c === CIERRE.CERRADO);
     const todosAbiertos = cierres.every(c => c === CIERRE.ABIERTO);

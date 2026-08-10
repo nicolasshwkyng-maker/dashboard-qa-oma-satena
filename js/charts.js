@@ -202,9 +202,11 @@ QA.charts = (function () {
    * Punto de entrada: recibe TODO lo agregado (kpiEngine) y pinta todo.
    * ------------------------------------------------------------------ */
   function renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo) {
-    renderProgramaPorMes(QA.kpiEngine.programaPorMes(audits));
-    renderEstadoPrograma(QA.kpiEngine.estadoPrograma(audits));
-    renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(audits));
+    // Resumen Ejecutivo: SOLO Auditorías (tipoRegistro AUDITORIA) — las
+    // Inspecciones no deben sumar aquí, tienen su propio resumen aparte.
+    renderProgramaPorMes(QA.kpiEngine.programaPorMes(auditoriasSoloTipo));
+    renderEstadoPrograma(QA.kpiEngine.estadoPrograma(auditoriasSoloTipo));
+    renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(auditoriasSoloTipo));
     renderHallazgosEstado(QA.kpiEngine.hallazgosPorEstado(findings));
     renderHallazgosClasificacion(QA.kpiEngine.hallazgosPorClasificacion(findings));
     renderHallazgosProceso(QA.kpiEngine.hallazgosPorProceso(findings));

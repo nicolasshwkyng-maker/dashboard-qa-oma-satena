@@ -512,12 +512,16 @@
    * ------------------------------------------------------------------ */
   function renderEverything() {
     const { audits, findings } = QA.filters.apply(state.allAudits, state.allFindings);
-    const k = QA.kpiEngine.computeKpis(audits, findings);
-    state.lastKpis = k;
-    renderKpis(k);
 
+    // El Resumen Ejecutivo (KPIs + gráficas de Auditorías/Cumplimiento/
+    // Cierre) contabiliza SOLO tipoRegistro=AUDITORIA — las Inspecciones no
+    // se mezclan aquí, tienen su propio resumen en la pestaña Inspecciones.
     const auditoriasSoloTipo = QA.kpiEngine.porTipoRegistro(audits, "AUDITORIA");
     const inspeccionesSoloTipo = QA.kpiEngine.porTipoRegistro(audits, "INSPECCION");
+
+    const k = QA.kpiEngine.computeKpis(auditoriasSoloTipo, findings);
+    state.lastKpis = k;
+    renderKpis(k);
 
     QA.charts.renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo);
     renderSubsectionKpis("kpiGridPrograma", auditoriasSoloTipo);
