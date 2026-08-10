@@ -15,7 +15,7 @@ QA.filters = (function () {
 
   const EMPTY_STATE = {
     anio: "", mes: "", proveedor: "", areaInterna: "", clasificacion: "",
-    modalidad: "", ubicacion: "", auditor: "", estado: "", tipo: "",
+    modalidad: "", ubicacion: "", auditor: "", estado: "", tipo: "", programacion: "",
   };
 
   let state = { ...EMPTY_STATE };
@@ -84,6 +84,8 @@ QA.filters = (function () {
     if (s.auditor && a.auditorResponsable !== s.auditor) return false;
     if (s.estado && a.estadoCalculado !== s.estado) return false;
     if (s.tipo && a.tipoAmplio !== s.tipo) return false;
+    if (s.programacion === "Programada" && a.esExtraordinaria) return false;
+    if (s.programacion === "No Programada" && !a.esExtraordinaria) return false;
     return true;
   }
 
@@ -106,7 +108,7 @@ QA.filters = (function () {
       const label = f.auditoriaVinculada ? clasifById.get(f.auditoriaVinculada) : null;
       if (label !== s.clasificacion) return false;
     }
-    if (s.estado && f.auditoriaVinculada && !matchedAuditIds.has(f.auditoriaVinculada)) return false;
+    if ((s.estado || s.programacion) && f.auditoriaVinculada && !matchedAuditIds.has(f.auditoriaVinculada)) return false;
     return true;
   }
 

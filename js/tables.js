@@ -12,15 +12,18 @@ window.QA = window.QA || {};
 QA.tables = (function () {
   const u = QA.utils;
   let dtAuditorias = null;
+  let dtInspecciones = null;
   let dtHallazgos = null;
   let dtFaa = null;
 
   const ESTADO_LABELS = {
-    EJECUTADA: "Ejecutada", EN_EJECUCION: "En Ejecución", VENCIDA: "Vencida", PENDIENTE: "Pendiente",
+    POR_EJECUTAR: "Por Ejecutar", EJECUTADA: "Ejecutada", NO_EJECUTADA: "No Ejecutada", CANCELADA: "Cancelada",
   };
   const ESTADO_COLORS = {
-    EJECUTADA: "#3B6D11", EN_EJECUCION: "#BA7517", VENCIDA: "#A32D2D", PENDIENTE: "#5F5E5A",
+    POR_EJECUTAR: "#185FA5", EJECUTADA: "#3B6D11", NO_EJECUTADA: "#A32D2D", CANCELADA: "#5F5E5A",
   };
+  const CIERRE_LABELS = { CERRADO: "Cerrada", ABIERTO: "Abierta", CIERRE_PARCIAL: "Cierre Parcial" };
+  const CIERRE_COLORS = { CERRADO: "#3B6D11", ABIERTO: "#A32D2D", CIERRE_PARCIAL: "#B5541C" };
 
   function badge(text, color, bg) {
     return `<span class="qa-badge" style="color:${color};background:${bg || color + "1a"}">${u.escapeHtml(text)}</span>`;
@@ -32,56 +35,74 @@ QA.tables = (function () {
     return badge(label, color);
   }
 
+  function cierreBadgeHtml(cierreRollup) {
+    if (!cierreRollup) return u.escapeHtml("—");
+    return badge(CIERRE_LABELS[cierreRollup] || cierreRollup, CIERRE_COLORS[cierreRollup] || "#5F5E5A");
+  }
+
   function categoriaBadgeHtml(clasificacionCanonica, label) {
     const colors = (QA.config.CATEGORY_COLORS && QA.config.CATEGORY_COLORS[clasificacionCanonica]) || ["#5F5E5A", "#F1EFE8"];
     return badge(label || clasificacionCanonica || "—", colors[0], colors[1]);
   }
 
   /* ------------------------------------------------------------------ *
-   * Tabla de Auditorías
+   * Tabla de Auditorías / Inspecciones (mismas columnas, se filtran por
+   * "tipoRegistro" antes de llegar aquí — ver app.js).
    * ------------------------------------------------------------------ */
   function auditoriasColumns() {
     return [
       { data: "auditado", title: "Nombre", render: (v) => u.escapeHtml(v || "—") },
       { data: "clasificacionLabel", title: "Clasificación", render: (v, t, row) => categoriaBadgeHtml(row.clasificacionCanonica, v) },
-      { data: "tipoAuditoria", title: "Tipo", render: (v) => u.escapeHtml(v || "—") },
       { data: "modalidad", title: "Modalidad", render: (v) => u.escapeHtml(v || "No especificado") },
       { data: "ciudad", title: "Ubicación", render: (v) => u.escapeHtml(v || "No especificado") },
       { data: "fechaProgramada", title: "Fecha Programada", render: (v) => u.formatDate(v), type: "date" },
-      { data: "ultimaFechaEvidencia", title: "Fecha Ejecución", render: (v, t, row) => u.formatDate(row.fechaEjecucionReal || v) },
-      { data: "estadoCalculado", title: "Estado", render: (v) => estadoBadgeHtml(v) },
+      { data: "fechaEjecucionReal", title: "Fecha Ejecución", render: (v) => u.formatDate(v) },
+      { data: "estadoCalculado", title: "Estatus", render: (v) => estadoBadgeHtml(v) },
+      { data: null, title: "Programación", render: (row) => row.esExtraordinaria ? badge("No Programada", "#534AB7") : badge("Programada", "#185FA5") },
+      { data: "cierreRollup", title: "Cierre (hallazgos)", render: (v) => cierreBadgeHtml(v) },
       { data: "auditorResponsable", title: "Responsable", render: (v) => u.escapeHtml(v || "—") },
-      {
-        data: null, title: "Evidencia", orderable: false,
-        render: (row) => row.evidenciaTotalFiles ? `${row.evidenciaTotalFiles} archivo(s)` + (row.esExtraordinaria ? " · <em>extraordinaria</em>" : "") : "Sin evidencia",
-      },
     ];
   }
 
   /** `onRowClick(auditoriaData)` — se llama al hacer clic en una fila, para
    * que app.js abra el formulario de edición. tables.js no conoce el modal
    * de edición: solo delega, para mantenerse como capa puramente visual. */
-  function initAuditoriasTable(audits, onRowClick) {
-    dtAuditorias = $("#tblAuditorias").DataTable({
-      data: audits,
+  function initGenericAuditoriasTable(selector, data, onRowClick) {
+    const dt = $(selector).DataTable({
+      data,
       columns: auditoriasColumns(),
       pageLength: 15,
-      order: [[5, "desc"]],
+      order: [[4, "desc"]],
       language: DT_LANG_ES,
       dom: "<'row mb-2'<'col-sm-6'l><'col-sm-6'f>>rt<'row mt-2'<'col-sm-5'i><'col-sm-7'p>>",
     });
     if (onRowClick) {
-      $("#tblAuditorias tbody").on("click", "tr", function () {
-        const data = dtAuditorias.row(this).data();
-        if (data) onRowClick(data);
+      $(`${selector} tbody`).on("click", "tr", function () {
+        const rowData = dt.row(this).data();
+        if (rowData) onRowClick(rowData);
       });
     }
+    return dt;
+  }
+
+  function initAuditoriasTable(audits, onRowClick) {
+    dtAuditorias = initGenericAuditoriasTable("#tblAuditorias", audits, onRowClick);
     return dtAuditorias;
   }
 
   function updateAuditoriasTable(audits, onRowClick) {
     if (!dtAuditorias) return initAuditoriasTable(audits, onRowClick);
     dtAuditorias.clear().rows.add(audits).draw();
+  }
+
+  function initInspeccionesTable(inspecciones, onRowClick) {
+    dtInspecciones = initGenericAuditoriasTable("#tblInspecciones", inspecciones, onRowClick);
+    return dtInspecciones;
+  }
+
+  function updateInspeccionesTable(inspecciones, onRowClick) {
+    if (!dtInspecciones) return initInspeccionesTable(inspecciones, onRowClick);
+    dtInspecciones.clear().rows.add(inspecciones).draw();
   }
 
   /* ------------------------------------------------------------------ *
@@ -92,7 +113,7 @@ QA.tables = (function () {
    * sin novedades (CONDICIÓN "N/A") y auditorías cuya determinación de
    * hallazgos todavía está pendiente (sin CONDICIÓN diligenciada).
    * ------------------------------------------------------------------ */
-  function estadoEfectivoHallazgo(f) { return f.estadoHallazgo || f.estadoAuditoria || null; }
+  function estadoEfectivoHallazgo(f) { return f.estadoHallazgo || null; }
 
   function tipoHallazgoBadge(condicion) {
     if (condicion === "NC") return badge("No Conformidad", "#A32D2D");
@@ -120,7 +141,7 @@ QA.tables = (function () {
       { data: "auditado", title: "Auditoría", render: (v) => u.escapeHtml(v || "—") },
       { data: null, title: "Código", render: (row) => u.escapeHtml(`${row.idAuditoria}-${row.numeroReporte}`) },
       { data: "condicion", title: "Tipo", render: (v) => tipoHallazgoBadge(v) },
-      { data: null, title: "Estado", render: (row) => { const e = estadoEfectivoHallazgo(row); return e === "Cerrado" ? badge("Cerrado", "#3B6D11") : e === "Abierto" ? badge("Abierto", "#A32D2D") : u.escapeHtml("—"); } },
+      { data: null, title: "Estado", render: (row) => { const e = estadoEfectivoHallazgo(row); return e === "Cerrado" ? badge("Cerrado", "#3B6D11") : e === "Abierto" ? badge("Abierto", "#A32D2D") : e === "Cierre Parcial" ? badge("Cierre Parcial", "#B5541C") : u.escapeHtml("—"); } },
       { data: "auditorLider", title: "Responsable", render: (v) => u.escapeHtml(v || "—") },
       { data: "fechaInicio", title: "Fecha", render: (v) => u.formatDate(v), type: "date" },
       { data: "fechaCierreReporte", title: "Fecha de Cierre", render: (v) => u.formatDate(v), type: "date" },
@@ -203,11 +224,12 @@ QA.tables = (function () {
     if (!dtAuditorias) return;
     const rows = dtAuditorias.rows({ search: "applied" }).data().toArray();
     const plain = rows.map(a => ({
-      "Nombre": a.auditado, "Clasificación": a.clasificacionLabel, "Tipo": a.tipoAuditoria,
+      "Nombre": a.auditado, "Clasificación": a.clasificacionLabel, "Tipo": a.tipoRegistro === "INSPECCION" ? "Inspección" : "Auditoría",
       "Modalidad": a.modalidad || "No especificado", "Ubicación": a.ciudad || "No especificado",
-      "Fecha Programada": u.formatDate(a.fechaProgramada), "Fecha Ejecución": u.formatDate(a.fechaEjecucionReal || a.ultimaFechaEvidencia),
-      "Estado": ESTADO_LABELS[a.estadoCalculado] || a.estadoCalculado, "Extraordinaria": a.esExtraordinaria ? "Sí" : "No",
-      "Archivos de Evidencia": a.evidenciaTotalFiles,
+      "Fecha Programada": u.formatDate(a.fechaProgramada), "Fecha Ejecución": u.formatDate(a.fechaEjecucionReal),
+      "Estatus": ESTADO_LABELS[a.estadoCalculado] || a.estadoCalculado, "Programación": a.esExtraordinaria ? "No Programada" : "Programada",
+      "Cierre (hallazgos)": CIERRE_LABELS[a.cierreRollup] || "—",
+      "Responsable": a.auditorResponsable || "—",
       "Hallazgos Vinculados": a.hallazgosVinculados || 0,
     }));
     downloadAsExcel(plain, "Auditorias", `Auditorias_QA_OMA_${dateStamp()}.xlsx`);
@@ -247,8 +269,9 @@ QA.tables = (function () {
   };
 
   return {
-    initAuditoriasTable, updateAuditoriasTable, initHallazgosTable, updateHallazgosTable, initFaaTable, updateFaaTable,
-    exportAuditoriasExcel, exportHallazgosExcel, estadoBadgeHtml, categoriaBadgeHtml,
+    initAuditoriasTable, updateAuditoriasTable, initInspeccionesTable, updateInspeccionesTable,
+    initHallazgosTable, updateHallazgosTable, initFaaTable, updateFaaTable,
+    exportAuditoriasExcel, exportHallazgosExcel, estadoBadgeHtml, categoriaBadgeHtml, cierreBadgeHtml,
     get auditoriasTable() { return dtAuditorias; }, get hallazgosTable() { return dtHallazgos; },
   };
 })();

@@ -94,17 +94,23 @@
   /* ------------------------------------------------------------------ *
    * Carga de datos desde Supabase
    * ------------------------------------------------------------------ */
-  /** Cuenta hallazgos por auditoría a partir del FK real hallazgo.auditoriaVinculada
-   * (ya resuelto por dataService — no hace falta adivinar por similitud de nombre). */
-  function attachFindingsToAudits(audits, findings) {
-    const findingsByAudit = new Map();
+  /** Agrupa hallazgos por auditoría a partir del FK real hallazgo.auditoriaVinculada
+   * (ya resuelto por dataService — no hace falta adivinar por similitud de
+   * nombre). Se necesita ANTES de statusEngine.applyAll para calcular el
+   * rollup de cierre por auditoría (ver js/statusEngine.js). */
+  function buildFindingsByAuditId(findings) {
+    const map = new Map();
     findings.forEach((f) => {
       if (!f.auditoriaVinculada) return;
-      if (!findingsByAudit.has(f.auditoriaVinculada)) findingsByAudit.set(f.auditoriaVinculada, []);
-      findingsByAudit.get(f.auditoriaVinculada).push(f);
+      if (!map.has(f.auditoriaVinculada)) map.set(f.auditoriaVinculada, []);
+      map.get(f.auditoriaVinculada).push(f);
     });
+    return map;
+  }
+
+  function attachFindingsToAudits(audits, findingsByAuditId) {
     audits.forEach((a) => {
-      const list = findingsByAudit.get(a.id) || [];
+      const list = findingsByAuditId.get(a.id) || [];
       a.hallazgosVinculados = list.length;
       a.hallazgosVinculadosNC = list.filter(f => f.condicion === "NC").length;
       a.hallazgosVinculadosOB = list.filter(f => f.condicion === "OB").length;
@@ -117,8 +123,9 @@
       const [audits, findings, faaDocs] = await Promise.all([
         QA.dataService.fetchAuditorias(), QA.dataService.fetchHallazgos(), QA.dataService.fetchFaaDocumentos(),
       ]);
-      QA.statusEngine.applyAll(audits);
-      attachFindingsToAudits(audits, findings);
+      const findingsByAuditId = buildFindingsByAuditId(findings);
+      QA.statusEngine.applyAll(audits, findingsByAuditId);
+      attachFindingsToAudits(audits, findingsByAuditId);
 
       state.allAudits = audits;
       state.allFindings = findings;
@@ -184,10 +191,11 @@
     fillSelect("fUbicacion", opts.ubicaciones, null, null, s.ubicacion);
     fillSelect("fAuditor", opts.auditores, null, null, s.auditor);
     document.getElementById("fEstado").value = s.estado || "";
+    document.getElementById("fProgramacion").value = s.programacion || "";
   }
 
   function wireFilters() {
-    const map = { fAnio: "anio", fMes: "mes", fClasificacion: "clasificacion", fTipo: "tipo", fProveedor: "proveedor", fAreaInterna: "areaInterna", fModalidad: "modalidad", fUbicacion: "ubicacion", fAuditor: "auditor", fEstado: "estado" };
+    const map = { fAnio: "anio", fMes: "mes", fClasificacion: "clasificacion", fTipo: "tipo", fProveedor: "proveedor", fAreaInterna: "areaInterna", fModalidad: "modalidad", fUbicacion: "ubicacion", fAuditor: "auditor", fEstado: "estado", fProgramacion: "programacion" };
     Object.entries(map).forEach(([elId, key]) => {
       document.getElementById(elId).addEventListener("change", (e) => {
         QA.filters.setValue(key, e.target.value);
@@ -218,17 +226,22 @@
 
   function renderKpis(k) {
     document.getElementById("kpiGridResumen").innerHTML = [
-      kpiCardHtml("Total de Auditorías", k.totalAuditorias, `${k.programadas} programadas + ${k.extraordinarias} extraordinarias`, "totalAuditorias", "audits"),
-      kpiCardHtml("Auditorías Programadas", k.programadas, null, "programadas", "audits"),
-      kpiCardHtml("Auditorías Ejecutadas", k.ejecutadas, "Incluye extraordinarias ejecutadas", "ejecutadas", "audits"),
-      kpiCardHtml("Auditorías Pendientes", k.pendientes, null, "pendientes", "audits"),
-      kpiCardHtml("Auditorías Extraordinarias", k.extraordinarias, null, "extraordinarias", "audits"),
-      kpiCardHtml("En Ejecución", k.enEjecucion, null, "enEjecucion", "audits"),
-      kpiCardHtml("% Cumplimiento", k.cumplimientoPct + "%", "Ejecutadas (incl. extraordinarias) / Programadas al inicio", "ejecutadas", "audits"),
+      kpiCardHtml("Total de Registros", k.totalAuditorias, `${k.programadas} programados + ${k.extraordinarias} extraordinarios`, "totalAuditorias", "audits"),
+      kpiCardHtml("Programados", k.programadas, null, "programadas", "audits"),
+      kpiCardHtml("Ejecutados", k.ejecutadas, "Incluye extraordinarios ejecutados", "ejecutadas", "audits"),
+      kpiCardHtml("Por Ejecutar", k.porEjecutar, null, "porEjecutar", "audits"),
+      kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits"),
+      kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits"),
+      kpiCardHtml("Extraordinarios (No Programados)", k.extraordinarias, `${k.extraordinariasEjecutadas} ejecutados`, "extraordinarias", "audits"),
+      kpiCardHtml("% Cumplimiento Cronograma Original", k.cumplimientoOriginalPct + "%", "Ejecutados programados / Total programado (nunca > 100%)", "ejecutadasProgramadas", "audits"),
+      kpiCardHtml("% Avance Total del Programa", k.avanceTotalPct + "%", "Incluye extraordinarios ejecutados — puede superar 100%", "ejecutadas", "audits"),
+      kpiCardHtml("Auditorías Cerradas", k.auditoriasCerradas, "Todos sus hallazgos cerrados", "auditoriasCerradas", "audits"),
+      kpiCardHtml("Auditorías Abiertas", k.auditoriasAbiertas, "Todos sus hallazgos abiertos", "auditoriasAbiertas", "audits"),
+      kpiCardHtml("Auditorías Cierre Parcial", k.auditoriasCierreParcial, "Mezcla de hallazgos abiertos/cerrados", "auditoriasCierreParcial", "audits"),
       kpiCardHtml("Hallazgos Abiertos", k.hallazgosAbiertos, null, "hallazgosAbiertos", "findings"),
       kpiCardHtml("Hallazgos Cerrados", k.hallazgosCerrados, null, "hallazgosCerrados", "findings"),
+      kpiCardHtml("Hallazgos Cierre Parcial", k.hallazgosCierreParcial, null, "hallazgosCierreParcial", "findings"),
       kpiCardHtml("Total de Hallazgos", k.hallazgosTotal, null, "hallazgosTotal", "findings"),
-      kpiCardHtml("Auditorías Vencidas", k.vencidas, null, "vencidas", "audits"),
       kpiCardHtml("Próximos 30 Días", k.proximos30Dias, null, "proximos30Dias", "audits"),
     ].join("");
 
@@ -236,7 +249,19 @@
       kpiCardHtml("Total de Hallazgos", k.hallazgosTotal, null, "hallazgosTotal", "findings"),
       kpiCardHtml("Abiertos", k.hallazgosAbiertos, null, "hallazgosAbiertos", "findings"),
       kpiCardHtml("Cerrados", k.hallazgosCerrados, null, "hallazgosCerrados", "findings"),
-      kpiCardHtml("% Cerrados", k.hallazgosTotal ? Math.round((k.hallazgosCerrados / k.hallazgosTotal) * 100) + "%" : "0%"),
+      kpiCardHtml("Cierre Parcial", k.hallazgosCierreParcial, null, "hallazgosCierreParcial", "findings"),
+    ].join("");
+  }
+
+  /** KPI simples para las secciones Auditorías / Inspecciones (subconjunto
+   * ya filtrado por tipoRegistro — ver renderEverything). */
+  function renderSubsectionKpis(gridId, subset) {
+    const k = QA.kpiEngine.computeKpis(subset, []);
+    document.getElementById(gridId).innerHTML = [
+      kpiCardHtml("Total", k.totalAuditorias),
+      kpiCardHtml("Programadas", k.programadas),
+      kpiCardHtml("Ejecutadas", k.ejecutadas, "Incluye extraordinarias ejecutadas"),
+      kpiCardHtml("% Cumplimiento Original", k.cumplimientoOriginalPct + "%"),
     ].join("");
   }
 
@@ -245,7 +270,7 @@
    * ------------------------------------------------------------------ */
   let kpiModalInstance = null;
 
-  function estadoEfectivoHallazgo(f) { return f.estadoHallazgo || f.estadoAuditoria || null; }
+  function estadoEfectivoHallazgo(f) { return f.estadoHallazgo || null; }
 
   function openKpiModal(title, items, kind) {
     document.getElementById("kpiModalLabel").textContent = `${title} (${items.length})`;
@@ -303,28 +328,23 @@
     return auditoriaModalInstance;
   }
 
-  function openAuditoriaForm(audit) {
+  /** `defaultTipoRegistro` — al crear desde "+ Nueva Inspección" se abre
+   * el mismo formulario preseleccionado en Inspección (ver wireHeaderActions). */
+  function openAuditoriaForm(audit, defaultTipoRegistro) {
     editingAuditoria = audit || null;
     document.getElementById("auditoriaForm").reset();
     document.getElementById("afId").value = audit ? audit.id : "";
-    document.getElementById("auditoriaModalLabel").textContent = audit ? "Editar Auditoría" : "Nueva Auditoría";
+    document.getElementById("auditoriaModalLabel").textContent = audit ? "Editar Registro" : "Nuevo Registro";
     document.getElementById("afAuditado").value = audit ? (audit.auditado || "") : "";
     document.getElementById("afCiudad").value = audit ? (audit.ciudad || "") : "";
     document.getElementById("afClasificacionLabel").value = audit ? (audit.clasificacionLabel || "") : "";
-    document.getElementById("afTipoAmplio").value = audit ? (audit.tipoAmplio || "Proveedor") : "Proveedor";
+    document.getElementById("afTipoRegistro").value = audit ? (audit.tipoRegistro || "AUDITORIA") : (defaultTipoRegistro || "AUDITORIA");
+    document.getElementById("afEstatus").value = audit ? (audit.estatus || "Por Ejecutar") : "Por Ejecutar";
     document.getElementById("afModalidad").value = audit ? (audit.modalidad || "") : "";
     document.getElementById("afAuditorResponsable").value = audit ? (audit.auditorResponsable || "") : "";
     document.getElementById("afFechaProgramada").value = dateInputVal(audit && audit.fechaProgramada);
     document.getElementById("afEsExtraordinaria").checked = !!(audit && audit.esExtraordinaria);
     document.getElementById("afFechaEjecucionReal").value = dateInputVal(audit && audit.fechaEjecucionReal);
-    document.getElementById("afFechaReprogramacion").value = dateInputVal(audit && audit.fechaReprogramacion);
-    document.getElementById("afEstatusManualCrono").value = audit ? (audit.estatusManualCrono || "") : "";
-    const counts = (audit && audit.evidenciaCounts) || {};
-    document.getElementById("afEv01").value = counts["01_AVI"] || 0;
-    document.getElementById("afEv02").value = counts["02_REA"] || 0;
-    document.getElementById("afEv03").value = counts["03_SEG"] || 0;
-    document.getElementById("afEv04").value = counts["04_CIE"] || 0;
-    document.getElementById("afEv05").value = counts["05_EVI"] || 0;
     document.getElementById("afNotas").value = audit ? (audit.notas || "") : "";
     document.getElementById("afBtnDelete").classList.toggle("d-none", !audit);
     toggleFechaEjecucionRealVisibility();
@@ -337,30 +357,21 @@
   }
 
   function collectAuditoriaFormValues() {
-    const counts = {
-      "01_AVI": Number(document.getElementById("afEv01").value) || 0,
-      "02_REA": Number(document.getElementById("afEv02").value) || 0,
-      "03_SEG": Number(document.getElementById("afEv03").value) || 0,
-      "04_CIE": Number(document.getElementById("afEv04").value) || 0,
-      "05_EVI": Number(document.getElementById("afEv05").value) || 0,
-    };
     const esExtraordinaria = document.getElementById("afEsExtraordinaria").checked;
+    const tipoRegistro = document.getElementById("afTipoRegistro").value;
     return {
       auditado: document.getElementById("afAuditado").value.trim(),
       ciudad: document.getElementById("afCiudad").value.trim() || null,
       clasificacionLabel: document.getElementById("afClasificacionLabel").value.trim() || null,
-      tipoAuditoria: document.getElementById("afClasificacionLabel").value.trim() || null,
-      tipoAmplio: document.getElementById("afTipoAmplio").value,
+      tipoRegistro,
+      tipoAmplio: tipoRegistro === "INSPECCION" ? "Inspección" : "Proveedor",
+      estatus: document.getElementById("afEstatus").value,
       modalidad: document.getElementById("afModalidad").value.trim() || null,
       auditorResponsable: document.getElementById("afAuditorResponsable").value.trim() || null,
       fechaProgramada: dateFromInput("afFechaProgramada"),
       esExtraordinaria,
       esNoProgramadaEnCrono: esExtraordinaria,
       fechaEjecucionReal: dateFromInput("afFechaEjecucionReal"),
-      fechaReprogramacion: dateFromInput("afFechaReprogramacion"),
-      estatusManualCrono: document.getElementById("afEstatusManualCrono").value.trim() || null,
-      evidenciaCounts: counts,
-      evidenciaTotalFiles: Object.values(counts).reduce((s, n) => s + n, 0),
       notas: document.getElementById("afNotas").value.trim() || null,
     };
   }
@@ -504,8 +515,15 @@
     const k = QA.kpiEngine.computeKpis(audits, findings);
     state.lastKpis = k;
     renderKpis(k);
-    QA.charts.renderAll(audits, findings);
-    QA.tables.updateAuditoriasTable(audits, openAuditoriaForm);
+
+    const auditoriasSoloTipo = QA.kpiEngine.porTipoRegistro(audits, "AUDITORIA");
+    const inspeccionesSoloTipo = QA.kpiEngine.porTipoRegistro(audits, "INSPECCION");
+
+    QA.charts.renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo);
+    renderSubsectionKpis("kpiGridPrograma", auditoriasSoloTipo);
+    renderSubsectionKpis("kpiGridInspecciones", inspeccionesSoloTipo);
+    QA.tables.updateAuditoriasTable(auditoriasSoloTipo, openAuditoriaForm);
+    QA.tables.updateInspeccionesTable(inspeccionesSoloTipo, (a) => openAuditoriaForm(a, "INSPECCION"));
     QA.tables.updateHallazgosTable(findings, openHallazgoForm);
     renderFaaPanel();
     QA.charts.resizeAll();
@@ -536,7 +554,7 @@
       showLoading("Generando PDF…");
       try {
         await QA.exportPdf.exportDashboardToPdf(
-          ["secResumen", "secPrograma", "secHallazgos", "secFaa"],
+          ["secResumen", "secPrograma", "secInspecciones", "secHallazgos", "secFaa"],
           { title: "Dashboard QA-OMA — SATENA M.R.O.", onProgress: (i, total) => showLoading(`Generando PDF… (${i + 1}/${total})`) }
         );
       } catch (e) {
@@ -546,7 +564,8 @@
     });
     document.getElementById("btnExportAuditoriasExcel").addEventListener("click", () => QA.tables.exportAuditoriasExcel());
     document.getElementById("btnExportHallazgosExcel").addEventListener("click", () => QA.tables.exportHallazgosExcel());
-    document.getElementById("btnNuevaAuditoria").addEventListener("click", () => openAuditoriaForm(null));
+    document.getElementById("btnNuevaAuditoria").addEventListener("click", () => openAuditoriaForm(null, "AUDITORIA"));
+    document.getElementById("btnNuevaInspeccion").addEventListener("click", () => openAuditoriaForm(null, "INSPECCION"));
     document.getElementById("btnNuevoHallazgo").addEventListener("click", () => openHallazgoForm(null));
   }
 

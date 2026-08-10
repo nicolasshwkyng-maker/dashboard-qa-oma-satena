@@ -27,12 +27,18 @@ QA.charts = (function () {
   };
 
   const DONUT_BUCKET_COLORS = {
-    Programadas: PALETTE.azulM,
-    Ejecutadas: PALETTE.verde,
-    Pendientes: PALETTE.rojo,
-    Reprogramadas: PALETTE.amber,
-    Canceladas: PALETTE.grisM,
-    Extraordinarias: PALETTE.morado,
+    "Por Ejecutar": PALETTE.azulM,
+    "Ejecutada": PALETTE.verde,
+    "No Ejecutada": PALETTE.rojo,
+    "Cancelada": PALETTE.grisM,
+    "Extraordinarias": PALETTE.morado,
+  };
+
+  const CIERRE_COLORS = {
+    "Cerrada": PALETTE.verde,
+    "Abierta": PALETTE.rojo,
+    "Cierre Parcial": PALETTE.amber,
+    "Sin hallazgos": PALETTE.grisM,
   };
 
   const CATEGORY_SERIES_COLORS = Object.values(QA.config.CATEGORY_COLORS).map(c => c[0]);
@@ -100,26 +106,28 @@ QA.charts = (function () {
     }));
   }
 
-  function renderPorClasificacion(pairs) {
-    getOrCreate("chartClasificacion", barConfig({
+  /** `canvasId` parametrizable para poder reusar el mismo gráfico en la
+   * sección Auditorías (default) y en Inspecciones (ver app.js). */
+  function renderPorClasificacion(pairs, canvasId) {
+    getOrCreate(canvasId || "chartClasificacion", barConfig({
       labels: pairs.map(p => p[0]),
       horizontal: true,
-      datasets: [{ label: "Auditorías", data: pairs.map(p => p[1]), backgroundColor: CATEGORY_SERIES_COLORS, borderRadius: 4 }],
+      datasets: [{ label: "Registros", data: pairs.map(p => p[1]), backgroundColor: CATEGORY_SERIES_COLORS, borderRadius: 4 }],
     }));
   }
 
-  function renderPorModalidad(pairs) {
-    getOrCreate("chartModalidad", doughnutConfig(
+  function renderPorModalidad(pairs, canvasId) {
+    getOrCreate(canvasId || "chartModalidad", doughnutConfig(
       pairs.map(p => p[0]), pairs.map(p => p[1]),
       [PALETTE.azulM, PALETTE.tealM, PALETTE.grisM, PALETTE.amber]
     ));
   }
 
-  function renderPorUbicacion(pairs) {
-    getOrCreate("chartUbicacion", barConfig({
+  function renderPorUbicacion(pairs, canvasId) {
+    getOrCreate(canvasId || "chartUbicacion", barConfig({
       labels: pairs.map(p => p[0]),
       horizontal: true,
-      datasets: [{ label: "Auditorías", data: pairs.map(p => p[1]), backgroundColor: PALETTE.azulM, borderRadius: 4 }],
+      datasets: [{ label: "Registros", data: pairs.map(p => p[1]), backgroundColor: PALETTE.azulM, borderRadius: 4 }],
     }));
   }
 
@@ -130,11 +138,19 @@ QA.charts = (function () {
     ));
   }
 
+  /** Dona "Auditorías por Cierre" (rollup calculado desde sus hallazgos). */
+  function renderAuditoriasPorCierre(buckets) {
+    getOrCreate("chartAuditoriasPorCierre", doughnutConfig(
+      buckets.map(b => b.label), buckets.map(b => b.value),
+      buckets.map(b => CIERRE_COLORS[b.label] || PALETTE.grisM)
+    ));
+  }
+
   /* ------------------------------------------------------------------ *
    * HALLAZGOS
    * ------------------------------------------------------------------ */
   function renderHallazgosEstado(pairs) {
-    const colorFor = (label) => label === "Cerrado" ? PALETTE.verde : label === "Abierto" ? PALETTE.rojo : PALETTE.grisM;
+    const colorFor = (label) => label === "Cerrado" ? PALETTE.verde : label === "Abierto" ? PALETTE.rojo : label === "Cierre Parcial" ? PALETTE.amber : PALETTE.grisM;
     getOrCreate("chartHallazgosEstado", doughnutConfig(pairs.map(p => p[0]), pairs.map(p => p[1]), pairs.map(p => colorFor(p[0]))));
   }
 
@@ -186,16 +202,23 @@ QA.charts = (function () {
   /* ------------------------------------------------------------------ *
    * Punto de entrada: recibe TODO lo agregado (kpiEngine) y pinta todo.
    * ------------------------------------------------------------------ */
-  function renderAll(audits, findings) {
+  function renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo) {
     renderProgramaPorMes(QA.kpiEngine.programaPorMes(audits));
-    renderPorClasificacion(QA.kpiEngine.porClasificacion(audits));
-    renderPorModalidad(QA.kpiEngine.porModalidad(audits));
-    renderPorUbicacion(QA.kpiEngine.porUbicacion(audits));
     renderEstadoPrograma(QA.kpiEngine.estadoPrograma(audits));
+    renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(audits));
     renderHallazgosEstado(QA.kpiEngine.hallazgosPorEstado(findings));
     renderHallazgosClasificacion(QA.kpiEngine.hallazgosPorClasificacion(findings));
     renderHallazgosProceso(QA.kpiEngine.hallazgosPorProceso(findings));
     renderHallazgosTendencia(QA.kpiEngine.hallazgosTendenciaMensual(findings));
+
+    // Auditorías (sección propia): solo tipo AUDITORIA
+    renderPorClasificacion(QA.kpiEngine.porClasificacion(auditoriasSoloTipo), "chartClasificacion");
+    renderPorModalidad(QA.kpiEngine.porModalidad(auditoriasSoloTipo), "chartModalidad");
+    renderPorUbicacion(QA.kpiEngine.porUbicacion(auditoriasSoloTipo), "chartUbicacion");
+
+    // Inspecciones (sección propia): solo tipo INSPECCION
+    renderPorClasificacion(QA.kpiEngine.porClasificacion(inspeccionesSoloTipo), "chartInspClasificacion");
+    renderPorUbicacion(QA.kpiEngine.porUbicacion(inspeccionesSoloTipo), "chartInspUbicacion");
   }
 
   /** Chart.js calcula el tamaño del canvas en el momento de crearlo: si el

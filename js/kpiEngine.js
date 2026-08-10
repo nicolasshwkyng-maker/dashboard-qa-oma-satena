@@ -2,10 +2,10 @@
  * js/kpiEngine.js — Cálculo de indicadores (KPIs) y agregaciones para gráficos
  * ============================================================================
  * Módulo puro: recibe el arreglo unificado de auditorías (ya con
- * "estadoCalculado" asignado por statusEngine.js) y el arreglo de hallazgos
- * (ya vinculados por matching.linkFindingsToAudits), y devuelve números y
- * agregaciones listas para pintar. No toca el DOM ni Chart.js — así se
- * puede recalcular en cada cambio de filtro sin acoplarse a la capa visual.
+ * "estadoCalculado"/"cierreRollup" asignado por statusEngine.js) y el
+ * arreglo de hallazgos, y devuelve números y agregaciones listas para
+ * pintar. No toca el DOM ni Chart.js — así se puede recalcular en cada
+ * cambio de filtro sin acoplarse a la capa visual.
  */
 
 window.QA = window.QA || {};
@@ -13,23 +13,18 @@ window.QA = window.QA || {};
 QA.kpiEngine = (function () {
   const u = QA.utils;
   const EST = QA.statusEngine.ESTADOS;
+  const CIERRE = QA.statusEngine.CIERRE;
 
-  /**
-   * Cada fila de la hoja "Hallazgos Auditoria" cuenta como un hallazgo
-   * registrado — así es como el equipo QA lo cuenta manualmente (61 filas
-   * = 61 hallazgos), incluyendo las filas con CONDICIÓN "N/A" (auditorías
-   * cerradas sin no-conformidades/observaciones, pero igualmente
-   * registradas como parte del seguimiento) y sin dato (auditorías cuya
-   * determinación de hallazgos aún está pendiente). NO se filtra por
-   * CONDICIÓN — se cambió esta regla tras validar el conteo con el
-   * usuario (ver README.md).
-   *
-   * Estado efectivo de una fila: usa el estado propio del hallazgo
-   * (columna "ESTADO") y, si esa fila todavía no lo tiene diligenciado,
-   * cae al estado general de la auditoría (columna "ESTADO DE LA
-   * AUDITORÍA") como mejor aproximación disponible.
-   */
-  function estadoEfectivo(f) { return f.estadoHallazgo || f.estadoAuditoria || null; }
+  /** Cada fila de la hoja HALLAZGOS_2026 cuenta como un hallazgo registrado
+   * (igual criterio validado con el usuario para la fuente anterior). El
+   * estado de cierre viene directo de la columna "ESTADO" (Abierto/Cerrado/
+   * Cierre Parcial) — ya no hace falta caer al estado de la auditoría. */
+  function estadoEfectivo(f) { return f.estadoHallazgo || null; }
+
+  /* ------------------------------------------------------------------ *
+   * Separar Auditorías de Inspecciones (columna "Tipo" del Excel 2026)
+   * ------------------------------------------------------------------ */
+  function porTipoRegistro(audits, tipo) { return audits.filter(a => a.tipoRegistro === tipo); }
 
   /* ------------------------------------------------------------------ *
    * KPIs principales (tarjetas superiores del dashboard)
@@ -37,12 +32,13 @@ QA.kpiEngine = (function () {
   function computeKpis(audits, findings, today) {
     today = today || new Date();
     const programadas = audits.filter(a => !a.esExtraordinaria);
+    const extraordinarias = audits.filter(a => a.esExtraordinaria);
     const ejecutadas = audits.filter(a => a.estadoCalculado === EST.EJECUTADA);
     const ejecutadasProgramadas = programadas.filter(a => a.estadoCalculado === EST.EJECUTADA);
-    const pendientes = audits.filter(a => a.estadoCalculado === EST.PENDIENTE);
-    const extraordinarias = audits.filter(a => a.esExtraordinaria);
-    const enEjecucion = audits.filter(a => a.estadoCalculado === EST.EN_EJECUCION);
-    const vencidas = audits.filter(a => a.estadoCalculado === EST.VENCIDA);
+    const extraordinariasEjecutadas = extraordinarias.filter(a => a.estadoCalculado === EST.EJECUTADA);
+    const porEjecutar = audits.filter(a => a.estadoCalculado === EST.POR_EJECUTAR);
+    const noEjecutadas = audits.filter(a => a.estadoCalculado === EST.NO_EJECUTADA);
+    const canceladas = audits.filter(a => a.estadoCalculado === EST.CANCELADA);
 
     const en30dias = (() => {
       const limite = new Date(today.getTime() + QA.config.KPI.PROXIMOS_DIAS * 86400000);
@@ -52,37 +48,48 @@ QA.kpiEngine = (function () {
 
     const hallazgosAbiertos = findings.filter(f => estadoEfectivo(f) === "Abierto");
     const hallazgosCerrados = findings.filter(f => estadoEfectivo(f) === "Cerrado");
+    const hallazgosCierreParcial = findings.filter(f => estadoEfectivo(f) === "Cierre Parcial");
 
-    // % Cumplimiento: se mide contra el total PROGRAMADO al inicio del año
-    // (denominador fijo), pero en el numerador se cuentan TODAS las
-    // auditorías ejecutadas, incluidas las extraordinarias/no programadas
-    // (regla de negocio definida por el usuario: una extraordinaria
-    // ejecutada también aporta al avance real del programa). Por eso el
-    // indicador puede superar el 100% si, además de cumplirse todo lo
-    // proyectado, se ejecutan auditorías adicionales no programadas.
-    const cumplimiento = programadas.length ? (ejecutadas.length / programadas.length) * 100 : 0;
+    const auditoriasCerradas = audits.filter(a => a.cierreRollup === CIERRE.CERRADO);
+    const auditoriasAbiertas = audits.filter(a => a.cierreRollup === CIERRE.ABIERTO);
+    const auditoriasCierreParcial = audits.filter(a => a.cierreRollup === CIERRE.CIERRE_PARCIAL);
+
+    // % Cumplimiento del CRONOGRAMA ORIGINAL: solo cuenta lo programado
+    // desde el inicio — nunca puede superar 100%.
+    const cumplimientoOriginal = programadas.length ? (ejecutadasProgramadas.length / programadas.length) * 100 : 0;
+    // % Avance TOTAL del programa: al numerador de arriba se le suman las
+    // extraordinarias ejecutadas — SÍ puede superar 100%, mostrando
+    // explícitamente cuánto aportaron las auditorías no programadas.
+    const avanceTotal = programadas.length ? ((ejecutadasProgramadas.length + extraordinariasEjecutadas.length) / programadas.length) * 100 : 0;
 
     return {
       programadas: programadas.length,
       ejecutadas: ejecutadas.length,
       ejecutadasProgramadas: ejecutadasProgramadas.length,
-      pendientes: pendientes.length,
       extraordinarias: extraordinarias.length,
-      enEjecucion: enEjecucion.length,
-      vencidas: vencidas.length,
+      extraordinariasEjecutadas: extraordinariasEjecutadas.length,
+      porEjecutar: porEjecutar.length,
+      noEjecutadas: noEjecutadas.length,
+      canceladas: canceladas.length,
       proximos30Dias: en30dias.length,
-      cumplimientoPct: Math.round(cumplimiento * 10) / 10,
+      cumplimientoOriginalPct: Math.round(cumplimientoOriginal * 10) / 10,
+      avanceTotalPct: Math.round(avanceTotal * 10) / 10,
       hallazgosTotal: findings.length,
       hallazgosAbiertos: hallazgosAbiertos.length,
       hallazgosCerrados: hallazgosCerrados.length,
+      hallazgosCierreParcial: hallazgosCierreParcial.length,
+      auditoriasCerradas: auditoriasCerradas.length,
+      auditoriasAbiertas: auditoriasAbiertas.length,
+      auditoriasCierreParcial: auditoriasCierreParcial.length,
       totalAuditorias: audits.length,
       // Listas crudas (mismos criterios que arriba) para poder mostrar el
       // detalle al hacer clic en una tarjeta KPI (ver app.js openKpiModal).
       lists: {
         totalAuditorias: audits,
-        programadas, ejecutadas, ejecutadasProgramadas, pendientes, extraordinarias,
-        enEjecucion, vencidas, proximos30Dias: en30dias,
-        hallazgosTotal: findings, hallazgosAbiertos, hallazgosCerrados,
+        programadas, ejecutadas, ejecutadasProgramadas, extraordinarias, extraordinariasEjecutadas,
+        porEjecutar, noEjecutadas, canceladas, proximos30Dias: en30dias,
+        hallazgosTotal: findings, hallazgosAbiertos, hallazgosCerrados, hallazgosCierreParcial,
+        auditoriasCerradas, auditoriasAbiertas, auditoriasCierreParcial,
       },
     };
   }
@@ -91,16 +98,13 @@ QA.kpiEngine = (function () {
    * Programa: programadas vs ejecutadas por mes (+ extraordinarias)
    * ------------------------------------------------------------------ */
   /** Mejor fecha disponible para ubicar una extraordinaria en el mes en que
-   * realmente se ejecutó: no tiene fecha programada por definición. Se
-   * prioriza "fechaEjecucionReal" — campo editable a mano en el formulario
-   * de auditoría (ver js/dataService.js) — sobre la fecha de evidencia,
-   * porque esta última resultó no ser confiable (la fecha de modificación
-   * de archivos sincronizados en la nube no refleja la fecha real de
-   * ejecución; ver historial de la app). Sin "fechaEjecucionReal" cargada,
-   * la auditoría simplemente no aparece en el gráfico mensual — mejor
-   * omitirla que mostrar una fecha incorrecta. */
+   * realmente se ejecutó: no tiene fecha programada por definición. Se usa
+   * "fechaEjecucionReal" (columna "Ejecucion Reprogramada" del Excel, o
+   * editada a mano en el formulario) — sin ella, la auditoría simplemente
+   * no aparece en el gráfico mensual en vez de mostrar una fecha inferida
+   * potencialmente incorrecta (ver historial de la app). */
   function fechaEjecucionExtraordinaria(a) {
-    return a.fechaEjecucionReal || a.primeraFechaEvidencia || a.ultimaFechaEvidencia || null;
+    return a.fechaEjecucionReal || null;
   }
 
   function programaPorMes(audits) {
@@ -141,8 +145,18 @@ QA.kpiEngine = (function () {
   function faaPorCategoria(faaDocs) { return countBy(faaDocs, d => d.categoryLabel); }
 
   function estadoPrograma(audits) {
-    const order = ["Programadas", "Ejecutadas", "Pendientes", "Reprogramadas", "Canceladas", "Extraordinarias"];
+    const order = ["Por Ejecutar", "Ejecutada", "No Ejecutada", "Cancelada", "Extraordinarias"];
     const counts = countBy(audits, a => a.donutBucket);
+    const map = new Map(counts);
+    return order.map(label => ({ label, value: map.get(label) || 0 }));
+  }
+
+  /** Dona "Auditorías por Cierre": rollup calculado a partir de los
+   * hallazgos vinculados a cada auditoría (ver statusEngine#computeAuditoriaRollup). */
+  function auditoriasPorCierre(audits) {
+    const order = ["Cerrada", "Abierta", "Cierre Parcial", "Sin hallazgos"];
+    const labelFor = { CERRADO: "Cerrada", ABIERTO: "Abierta", CIERRE_PARCIAL: "Cierre Parcial" };
+    const counts = countBy(audits, a => labelFor[a.cierreRollup] || "Sin hallazgos");
     const map = new Map(counts);
     return order.map(label => ({ label, value: map.get(label) || 0 }));
   }
@@ -174,8 +188,8 @@ QA.kpiEngine = (function () {
   }
 
   return {
-    computeKpis, programaPorMes, porClasificacion, porModalidad, porUbicacion, faaPorCategoria,
-    estadoPrograma, hallazgosPorEstado, hallazgosPorClasificacion, hallazgosPorProceso,
+    computeKpis, programaPorMes, porClasificacion, porModalidad, porUbicacion, faaPorCategoria, porTipoRegistro,
+    estadoPrograma, auditoriasPorCierre, hallazgosPorEstado, hallazgosPorClasificacion, hallazgosPorProceso,
     hallazgosTendenciaMensual, hallazgosEmitidosVsCerrados,
   };
 })();

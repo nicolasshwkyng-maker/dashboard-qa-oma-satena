@@ -1,91 +1,96 @@
 /**
- * js/statusEngine.js — Cálculo del estado real de cada auditoría
+ * js/statusEngine.js — Estado real de cada auditoría y de cada hallazgo
  * ============================================================================
- * Aquí se decide, para cada registro unificado que produjo matching.js, cuál
- * es su estado de ejecución REAL a partir de la evidencia encontrada (no del
- * estatus manual del cronograma, que solo se conserva como referencia).
+ * Desde la fuente de datos 2026 (hoja AUDITORIAS_2026), el estado de cada
+ * auditoría ya NO se infiere de evidencia de archivos: viene directo de la
+ * columna "Estatus", mantenida a mano por el equipo QA (fuente de verdad).
+ * Este módulo solo normaliza ese valor a una constante interna y calcula
+ * agregados derivados (bucket de la dona, rollup de cierre por auditoría a
+ * partir de sus hallazgos vinculados).
  *
- * Estados posibles (QA.statusEngine.ESTADOS):
- *   EJECUTADA     - hay evidencia de realización o cierre (02_REA o 04_CIE
- *                   con archivos), o es un grupo FAA Self-Evaluation.
- *   EN_EJECUCION  - solo hay evidencia de aviso/notificación (01_AVI), aún
- *                   sin realización.
- *   VENCIDA       - la fecha programada ya pasó y no hay evidencia de
- *                   ejecución (ni aviso ni realización).
- *   PENDIENTE     - todavía no llega (o no tiene) la fecha programada y no
- *                   hay evidencia.
+ * Estados posibles de auditoría (QA.statusEngine.ESTADOS):
+ *   POR_EJECUTAR, EJECUTADA, NO_EJECUTADA, CANCELADA
  *
- * Estas reglas son intencionalmente simples y están CENTRALIZADAS en este
- * archivo para que, tal como pide el proyecto, puedan ajustarse fácilmente
- * más adelante sin tocar el resto de la app (KPIs, gráficos y tablas solo
- * consumen "estadoCalculado", nunca recalculan evidencia).
+ * Estados posibles de cierre (hallazgo individual, o rollup de auditoría):
+ *   ABIERTO, CERRADO, CIERRE_PARCIAL
  *
- * Desde que los datos viven en Supabase (editados a mano en vez de
- * escaneados de una carpeta local), ya no existen los orígenes especiales
- * "FAA_SELF_EVAL" / "EVIDENCE_ONLY" que distinguía el motor de cruce
- * anterior (js/matching.js, retirado): quien carga una auditoría FAA o una
- * evidencia suelta simplemente registra sus archivos en el conteo
- * "02_REA" (realización), y con eso basta para que cuente como ejecutada.
+ * Reglas CENTRALIZADAS aquí para poder ajustarlas sin tocar kpiEngine/
+ * charts/tables, que solo consumen "estadoCalculado" / "cierreRollup".
  */
 
 window.QA = window.QA || {};
 
 QA.statusEngine = (function () {
-  const ESTADOS = { EJECUTADA: "EJECUTADA", EN_EJECUCION: "EN_EJECUCION", VENCIDA: "VENCIDA", PENDIENTE: "PENDIENTE" };
+  const u = QA.utils;
+  const ESTADOS = { POR_EJECUTAR: "POR_EJECUTAR", EJECUTADA: "EJECUTADA", NO_EJECUTADA: "NO_EJECUTADA", CANCELADA: "CANCELADA" };
+  const CIERRE = { ABIERTO: "ABIERTO", CERRADO: "CERRADO", CIERRE_PARCIAL: "CIERRE_PARCIAL" };
 
-  function hasFiles(counts, key) { return !!(counts && counts[key] > 0); }
+  const ESTATUS_TEXT_TO_ESTADO = {
+    "POR EJECUTAR": ESTADOS.POR_EJECUTAR,
+    "EJECUTADA": ESTADOS.EJECUTADA,
+    "NO EJECUTADA": ESTADOS.NO_EJECUTADA,
+    "CANCELADA": ESTADOS.CANCELADA,
+  };
 
-  function computeEstado(audit, today) {
-    const counts = audit.evidenciaCounts;
-    const ejecutada = hasFiles(counts, "02_REA") || hasFiles(counts, "04_CIE");
-    if (ejecutada) return ESTADOS.EJECUTADA;
-
-    const avisada = hasFiles(counts, "01_AVI") || hasFiles(counts, "03_SEG") || hasFiles(counts, "05_EVI");
-    const fecha = audit.fechaProgramada;
-    const vencida = fecha && fecha.getTime() < today.getTime();
-
-    if (vencida) return ESTADOS.VENCIDA;
-    if (avisada) return ESTADOS.EN_EJECUCION;
-    return ESTADOS.PENDIENTE;
+  function computeEstado(audit) {
+    return ESTATUS_TEXT_TO_ESTADO[u.normalize(audit.estatus)] || ESTADOS.POR_EJECUTAR;
   }
 
-  function computeCancelada(audit) {
-    const text = QA.utils.normalize((audit.estatusManualCrono || "") + " " + (audit.estadoCierreHallazgosManualCrono || ""));
-    return text.includes("CANCELAD");
-  }
+  const CIERRE_TEXT_TO_CONST = {
+    "ABIERTO": CIERRE.ABIERTO,
+    "CERRADO": CIERRE.CERRADO,
+    "CIERRE PARCIAL": CIERRE.CIERRE_PARCIAL,
+  };
 
-  function computeReprogramada(audit) {
-    return !!audit.fechaReprogramacion;
+  /** Estado de cierre de UN hallazgo individual (columna "ESTADO" del Excel). */
+  function computeCierreHallazgo(finding) {
+    return CIERRE_TEXT_TO_CONST[u.normalize(finding.estadoHallazgo)] || null;
   }
 
   /**
-   * Bucket único para el gráfico de dona "Estado del Programa" (6 categorías
-   * mutuamente excluyentes, en orden de prioridad). Las auditorías
-   * "En Ejecución" y "Vencidas" -que sí tienen su propia tarjeta KPI- se
-   * agrupan aquí bajo "Pendientes" para respetar exactamente las 6
-   * categorías solicitadas sin duplicar información en la dona.
+   * Rollup de cierre a nivel Auditoría, a partir del cierre de TODOS sus
+   * hallazgos vinculados: Cerrada si todos cerrados, Abierta si todos
+   * abiertos, Cierre Parcial si hay mezcla (o si algún hallazgo individual
+   * ya está marcado como Cierre Parcial). null si la auditoría no tiene
+   * hallazgos vinculados (no aplica).
+   */
+  function computeAuditoriaRollup(hallazgosDeLaAuditoria) {
+    if (!hallazgosDeLaAuditoria || !hallazgosDeLaAuditoria.length) return null;
+    const cierres = hallazgosDeLaAuditoria.map(computeCierreHallazgo).filter(Boolean);
+    if (!cierres.length) return null;
+    if (cierres.some(c => c === CIERRE.CIERRE_PARCIAL)) return CIERRE.CIERRE_PARCIAL;
+    const todosCerrados = cierres.every(c => c === CIERRE.CERRADO);
+    const todosAbiertos = cierres.every(c => c === CIERRE.ABIERTO);
+    if (todosCerrados) return CIERRE.CERRADO;
+    if (todosAbiertos) return CIERRE.ABIERTO;
+    return CIERRE.CIERRE_PARCIAL;
+  }
+
+  /**
+   * Bucket para el gráfico de dona "Estado del Programa": refleja
+   * directamente el vocabulario del Excel (Estatus), separando aparte las
+   * extraordinarias/no programadas (que pueden estar en cualquier Estatus).
    */
   function computeDonutBucket(audit) {
     if (audit.esExtraordinaria) return "Extraordinarias";
-    if (audit.esCancelada) return "Canceladas";
-    if (audit.estadoCalculado === ESTADOS.EJECUTADA) return "Ejecutadas";
-    if (audit.esReprogramada && audit.estadoCalculado !== ESTADOS.EJECUTADA) return "Reprogramadas";
-    if (audit.estadoCalculado === ESTADOS.PENDIENTE) return "Programadas";
-    return "Pendientes"; // VENCIDA o EN_EJECUCION
+    const labels = { POR_EJECUTAR: "Por Ejecutar", EJECUTADA: "Ejecutada", NO_EJECUTADA: "No Ejecutada", CANCELADA: "Cancelada" };
+    return labels[audit.estadoCalculado] || "Por Ejecutar";
   }
 
-  /** Aplica el motor de estado a todos los registros (in-place + devuelve el arreglo). */
-  function applyAll(audits, today) {
-    today = today || new Date();
+  /**
+   * Aplica el motor de estado a todas las auditorías (in-place + devuelve
+   * el arreglo). `findingsByAuditId` es un Map<auditoria_id, hallazgo[]>
+   * (ver app.js#attachFindingsToAudits) para calcular el rollup de cierre.
+   */
+  function applyAll(audits, findingsByAuditId) {
     audits.forEach((audit) => {
-      audit.estadoCalculado = computeEstado(audit, today);
-      audit.esCancelada = computeCancelada(audit);
-      audit.esReprogramada = computeReprogramada(audit);
+      audit.estadoCalculado = computeEstado(audit);
       audit.donutBucket = computeDonutBucket(audit);
-      audit.diasParaVencer = audit.fechaProgramada ? QA.utils.daysBetween(new Date(), new Date(audit.fechaProgramada)) : null;
+      audit.cierreRollup = computeAuditoriaRollup(findingsByAuditId ? findingsByAuditId.get(audit.id) : null);
+      audit.diasParaVencer = audit.fechaProgramada ? u.daysBetween(new Date(), new Date(audit.fechaProgramada)) : null;
     });
     return audits;
   }
 
-  return { ESTADOS, computeEstado, computeCancelada, computeReprogramada, computeDonutBucket, applyAll };
+  return { ESTADOS, CIERRE, computeEstado, computeCierreHallazgo, computeAuditoriaRollup, computeDonutBucket, applyAll };
 })();

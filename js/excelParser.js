@@ -156,5 +156,98 @@ QA.excelParser = (function () {
     return out;
   }
 
-  return { parseCronoDef, parseHallazgos, parseControlSatdsg };
+  /* ------------------------------------------------------------------ *
+   * AUDITORIAS_2026 — reemplaza a "CRONO DEF" a partir de agosto de 2026.
+   * Fuente única y ya corregida a mano por el equipo QA
+   * (CONTROL_CRONOGRAMA_HALLAZGOS_AUDITORIAS_2026.xlsx). A diferencia de
+   * CRONO DEF, aquí el estado ("Estatus") y la fecha real de ejecución
+   * ("Ejecucion Reprogramada") ya vienen diligenciados a mano — no hace
+   * falta inferir nada de evidencia de archivos. La columna "Tipo"
+   * distingue Auditorías de Inspecciones.
+   * ------------------------------------------------------------------ */
+  async function parseAuditorias2026(file) {
+    const wb = await readWorkbook(file);
+    const rows = sheetToRows(wb, "AUDITORIAS_2026");
+    const out = [];
+    for (let i = 1; i < rows.length; i++) { // fila 0 = encabezado
+      const r = rows[i];
+      if (isEmptyRow(r)) continue;
+      if (r[0] === null || r[0] === undefined) continue; // sin ID -> no es una fila de datos válida
+      const programadaRaw = (r[2] || "").toString().trim();
+      const tipoRaw = (r[3] || "").toString().trim();
+      out.push({
+        idAuditado: r[0],
+        estatus: (r[1] || "").toString().trim() || null, // Por Ejecutar / Ejecutada / No Ejecutada / Cancelada
+        esNoProgramadaEnCrono: u.normalize(programadaRaw) === u.normalize("No programada"),
+        tipoRegistro: u.normalize(tipoRaw) === u.normalize("Inspección") ? "INSPECCION" : "AUDITORIA",
+        clasificacionRaw: (r[4] || "").toString().trim(),
+        auditado: (r[5] || "").toString().trim(),
+        ciudad: (r[6] || "").toString().trim() || null,
+        modalidad: (r[7] || "").toString().trim() || null,
+        fechaProgramada: u.toDateOrNull(r[8]),
+        fechaEjecucionReal: u.toDateOrNull(r[9]),
+        especificacionServicio: (r[10] || "").toString().trim() || null,
+      });
+    }
+    return out;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * HALLAZGOS_2026 — mismo layout de columnas que "Hallazgos Auditoria"
+   * salvo 2 diferencias: el encabezado real está en la fila 0 (sin filas
+   * de título antes), y hay una columna adicional "AUDITADO" (código
+   * corto, ej. "02_CBPAL") junto a "NOMBRE AUDITADO" — se usa el nombre
+   * completo. La columna "ESTADO" (hallazgo) ahora tiene 3 valores:
+   * Abierto / Cerrado / Cierre Parcial.
+   * ------------------------------------------------------------------ */
+  async function parseHallazgos2026(file) {
+    const wb = await readWorkbook(file);
+    const rows = sheetToRows(wb, "HALLAZGOS_2026");
+    const out = [];
+    for (let i = 1; i < rows.length; i++) { // fila 0 = encabezado
+      const r = rows[i];
+      if (isEmptyRow(r)) continue;
+      if (r[0] === null || r[0] === undefined) continue; // sin ID AUDITORIA
+      out.push({
+        idAuditoria: r[0],
+        numeroReporte: r[1],
+        tipoAuditoria: (r[2] || "").toString().trim() || null, // Externa/Interna
+        modalidad: (r[3] || "").toString().trim() || null,     // Presencial/Remota
+        clasificacionRaw: (r[4] || "").toString().trim(),
+        subClasificacionProveedor: (r[5] || "").toString().trim() || null,
+        auditado: (r[6] || "").toString().trim(),              // NOMBRE AUDITADO (nombre completo)
+        subAreaReporte: (r[8] || "").toString().trim() || null,
+        procesoReporte: (r[9] || "").toString().trim() || null,
+        auditorLider: (r[10] || "").toString().trim() || null,
+        auditorObservador: (r[11] || "").toString().trim() || null,
+        auditorApoyo: (r[12] || "").toString().trim() || null,
+        fechaInicio: u.toDateOrNull(r[13]),
+        fechaTerminacion: u.toDateOrNull(r[14]),
+        ciudadEjecucion: (r[15] || "").toString().trim() || null,
+        fechaNotificacion: u.toDateOrNull(r[20]),
+        consecutivoNotificacion: r[21] || null,
+        fechaLimiteRespuestaInforme: u.toDateOrNull(r[22]),
+        fechaRespuestaInforme: u.toDateOrNull(r[23]),
+        fechaSeguimientoSatena: u.toDateOrNull(r[24]),
+        proximoSeguimiento: u.toDateOrNull(r[28]),
+        fechaCierreFinalAuditoria: u.toDateOrNull(r[29]),
+        auditorCierre: (r[31] || "").toString().trim() || null,
+        estadoAuditoria: (r[32] || "").toString().trim() || null, // Abierto/Cerrado (a nivel de auditoría completa)
+        condicion: (r[33] || "").toString().trim() || null,       // NC / OB / N/A
+        requisito: (r[34] || "").toString().trim() || null,
+        descripcion: (r[35] || "").toString().trim() || null,
+        clasificacionReporte: (r[36] || "").toString().trim() || null, // taxonomía de causa raíz
+        barreras: (r[37] || "").toString().trim() || null,
+        probabilidad: (r[38] || "").toString().trim() || null,
+        severidad: (r[39] || "").toString().trim() || null,
+        combinacionProbSeveridad: (typeof r[40] === "number") ? r[40] : null,
+        fechaLimiteCumplimiento: u.toDateOrNull(r[41]),
+        fechaCierreReporte: u.toDateOrNull(r[42]),
+        estadoHallazgo: (r[43] || "").toString().trim() || null, // Abierto / Cerrado / Cierre Parcial
+      });
+    }
+    return out;
+  }
+
+  return { parseCronoDef, parseHallazgos, parseControlSatdsg, parseAuditorias2026, parseHallazgos2026 };
 })();

@@ -66,7 +66,8 @@
 
   <nav class="qa-nav" id="qaNav">
     <button class="qa-nav-item active" data-section="secResumen">Resumen Ejecutivo</button>
-    <button class="qa-nav-item" data-section="secPrograma">Programa de Auditorías</button>
+    <button class="qa-nav-item" data-section="secPrograma">Auditorías</button>
+    <button class="qa-nav-item" data-section="secInspecciones">Inspecciones</button>
     <button class="qa-nav-item" data-section="secHallazgos">Hallazgos</button>
     <button class="qa-nav-item" data-section="secFaa">FAA · Self Evaluation</button>
   </nav>
@@ -81,13 +82,20 @@
     <div class="qa-filter"><label>Modalidad</label><select id="fModalidad" class="form-select form-select-sm"><option value="">Todas</option></select></div>
     <div class="qa-filter"><label>Ubicación</label><select id="fUbicacion" class="form-select form-select-sm"><option value="">Todas</option></select></div>
     <div class="qa-filter"><label>Auditor</label><select id="fAuditor" class="form-select form-select-sm"><option value="">Todos</option></select></div>
-    <div class="qa-filter"><label>Estado</label>
+    <div class="qa-filter"><label>Estatus</label>
       <select id="fEstado" class="form-select form-select-sm">
         <option value="">Todos</option>
+        <option value="POR_EJECUTAR">Por Ejecutar</option>
         <option value="EJECUTADA">Ejecutada</option>
-        <option value="EN_EJECUCION">En Ejecución</option>
-        <option value="VENCIDA">Vencida</option>
-        <option value="PENDIENTE">Pendiente</option>
+        <option value="NO_EJECUTADA">No Ejecutada</option>
+        <option value="CANCELADA">Cancelada</option>
+      </select>
+    </div>
+    <div class="qa-filter"><label>Programación</label>
+      <select id="fProgramacion" class="form-select form-select-sm">
+        <option value="">Todas</option>
+        <option value="Programada">Programada</option>
+        <option value="No Programada">No Programada</option>
       </select>
     </div>
     <button class="btn btn-outline-qa btn-sm qa-filter-clear" id="btnClearFilters">Limpiar filtros</button>
@@ -98,14 +106,16 @@
     <!-- ============================= RESUMEN EJECUTIVO ============================= -->
     <section id="secResumen" class="qa-section">
       <div class="qa-kpi-grid" id="kpiGridResumen"></div>
-      <div class="qa-chart-grid cols-2">
+      <div class="qa-chart-grid cols-3">
         <div class="qa-chart-card"><div class="qa-chart-title">Estado del Programa</div><div class="qa-chart-canvas-wrap"><canvas id="chartEstadoPrograma"></canvas></div></div>
-        <div class="qa-chart-card"><div class="qa-chart-title">Auditorías Programadas vs Ejecutadas por Mes</div><div class="qa-chart-canvas-wrap"><canvas id="chartProgramaMes"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Auditorías por Cierre</div><div class="qa-chart-canvas-wrap"><canvas id="chartAuditoriasPorCierre"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Programadas vs Ejecutadas por Mes</div><div class="qa-chart-canvas-wrap"><canvas id="chartProgramaMes"></canvas></div></div>
       </div>
     </section>
 
-    <!-- ============================= PROGRAMA DE AUDITORÍAS ============================= -->
+    <!-- ============================= AUDITORÍAS (Tipo = Auditoria QA) ============================= -->
     <section id="secPrograma" class="qa-section d-none">
+      <div class="qa-kpi-grid cols-4" id="kpiGridPrograma"></div>
       <div class="qa-chart-grid cols-3">
         <div class="qa-chart-card"><div class="qa-chart-title">Por Clasificación</div><div class="qa-chart-canvas-wrap"><canvas id="chartClasificacion"></canvas></div></div>
         <div class="qa-chart-card"><div class="qa-chart-title">Por Modalidad</div><div class="qa-chart-canvas-wrap"><canvas id="chartModalidad"></canvas></div></div>
@@ -121,6 +131,25 @@
         </div>
         <div class="qa-table-hint text-muted small mb-1">Clic en una fila para editarla.</div>
         <div class="table-responsive"><table id="tblAuditorias" class="table table-hover qa-table w-100"></table></div>
+      </div>
+    </section>
+
+    <!-- ============================= INSPECCIONES (Tipo = Inspección) ============================= -->
+    <section id="secInspecciones" class="qa-section d-none">
+      <div class="qa-kpi-grid cols-4" id="kpiGridInspecciones"></div>
+      <div class="qa-chart-grid cols-2">
+        <div class="qa-chart-card"><div class="qa-chart-title">Por Clasificación</div><div class="qa-chart-canvas-wrap"><canvas id="chartInspClasificacion"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Por Ubicación</div><div class="qa-chart-canvas-wrap"><canvas id="chartInspUbicacion"></canvas></div></div>
+      </div>
+      <div class="qa-table-card">
+        <div class="qa-table-card-header">
+          <div class="qa-chart-title mb-0">Inspecciones</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-qa-primary btn-sm" id="btnNuevaInspeccion">+ Nueva Inspección</button>
+          </div>
+        </div>
+        <div class="qa-table-hint text-muted small mb-1">Clic en una fila para editarla.</div>
+        <div class="table-responsive"><table id="tblInspecciones" class="table table-hover qa-table w-100"></table></div>
       </div>
     </section>
 
@@ -210,14 +239,21 @@
         <div class="modal-body">
           <input type="hidden" id="afId">
           <div class="row g-2">
-            <div class="col-md-8"><label class="form-label">Auditado *</label><input class="form-control form-control-sm" id="afAuditado" required></div>
+            <div class="col-md-8"><label class="form-label">Auditado / Área o Proveedor *</label><input class="form-control form-control-sm" id="afAuditado" required></div>
             <div class="col-md-4"><label class="form-label">Ciudad</label><input class="form-control form-control-sm" id="afCiudad"></div>
             <div class="col-md-6"><label class="form-label">Clasificación</label><input class="form-control form-control-sm" id="afClasificacionLabel" placeholder="OMA, Proveedor, Laboratorio..."></div>
-            <div class="col-md-6"><label class="form-label">Tipo Amplio</label>
-              <select class="form-select form-select-sm" id="afTipoAmplio">
-                <option value="Proveedor">Proveedor</option>
-                <option value="Área Interna">Área Interna</option>
-                <option value="Inspección">Inspección</option>
+            <div class="col-md-3"><label class="form-label">Tipo</label>
+              <select class="form-select form-select-sm" id="afTipoRegistro">
+                <option value="AUDITORIA">Auditoría</option>
+                <option value="INSPECCION">Inspección</option>
+              </select>
+            </div>
+            <div class="col-md-3"><label class="form-label">Estatus *</label>
+              <select class="form-select form-select-sm" id="afEstatus" required>
+                <option value="Por Ejecutar">Por Ejecutar</option>
+                <option value="Ejecutada">Ejecutada</option>
+                <option value="No Ejecutada">No Ejecutada</option>
+                <option value="Cancelada">Cancelada</option>
               </select>
             </div>
             <div class="col-md-6"><label class="form-label">Modalidad</label><input class="form-control form-control-sm" id="afModalidad" placeholder="Presencial / Remota"></div>
@@ -230,18 +266,10 @@
               </div>
             </div>
             <div class="col-md-6" id="afFechaEjecucionRealWrap">
-              <label class="form-label">Fecha Ejecución Real (extraordinarias)</label>
+              <label class="form-label">Fecha Ejecución Real</label>
               <input type="date" class="form-control form-control-sm" id="afFechaEjecucionReal">
-              <div class="form-text">Fecha real en que se ejecutó esta auditoría no programada — se usa en el gráfico mensual en vez de una fecha inferida.</div>
+              <div class="form-text">Fecha real en que se ejecutó — se usa en el gráfico mensual para las no programadas (columna "Ejecucion Reprogramada" del Excel).</div>
             </div>
-            <div class="col-md-6"><label class="form-label">Fecha Reprogramación</label><input type="date" class="form-control form-control-sm" id="afFechaReprogramacion"></div>
-            <div class="col-12"><label class="form-label">Estatus Manual (cronograma)</label><input class="form-control form-control-sm" id="afEstatusManualCrono"></div>
-            <div class="col-12"><hr class="my-2"><div class="qa-chart-title mb-1" style="font-size:12px">Evidencia (conteo de archivos por carpeta)</div></div>
-            <div class="col-6 col-md"><label class="form-label small">01_AVI</label><input type="number" min="0" class="form-control form-control-sm" id="afEv01"></div>
-            <div class="col-6 col-md"><label class="form-label small">02_REA</label><input type="number" min="0" class="form-control form-control-sm" id="afEv02"></div>
-            <div class="col-6 col-md"><label class="form-label small">03_SEG</label><input type="number" min="0" class="form-control form-control-sm" id="afEv03"></div>
-            <div class="col-6 col-md"><label class="form-label small">04_CIE</label><input type="number" min="0" class="form-control form-control-sm" id="afEv04"></div>
-            <div class="col-6 col-md"><label class="form-label small">05_EVI</label><input type="number" min="0" class="form-control form-control-sm" id="afEv05"></div>
             <div class="col-12"><label class="form-label">Notas</label><textarea class="form-control form-control-sm" id="afNotas" rows="2"></textarea></div>
           </div>
         </div>
@@ -283,6 +311,7 @@
                 <option value="">—</option>
                 <option value="Abierto">Abierto</option>
                 <option value="Cerrado">Cerrado</option>
+                <option value="Cierre Parcial">Cierre Parcial</option>
               </select>
             </div>
             <div class="col-md-4"><label class="form-label">Auditor Líder</label><input class="form-control form-control-sm" id="hfAuditorLider"></div>

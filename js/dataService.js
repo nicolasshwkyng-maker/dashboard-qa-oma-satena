@@ -71,6 +71,8 @@ QA.dataService = (function () {
       clasificacionLabel: row.clasificacion_label,
       tipoAuditoria: row.tipo_auditoria,
       tipoAmplio: row.tipo_amplio,
+      estatus: row.estatus,
+      tipoRegistro: row.tipo_registro || "AUDITORIA",
       ciudad: row.ciudad,
       modalidad: row.modalidad,
       auditorResponsable: row.auditor_responsable,
@@ -89,7 +91,7 @@ QA.dataService = (function () {
       notas: row.notas,
       updatedAt: row.updated_at,
       // Completados por statusEngine.applyAll() después de leer, igual que hoy.
-      estadoCalculado: null, hallazgosVinculados: 0, hallazgosVinculadosNC: 0, hallazgosVinculadosOB: 0,
+      estadoCalculado: null, cierreRollup: null, hallazgosVinculados: 0, hallazgosVinculadosNC: 0, hallazgosVinculadosOB: 0,
     };
   }
 
@@ -101,6 +103,8 @@ QA.dataService = (function () {
       clasificacion_label: a.clasificacionLabel || null,
       tipo_auditoria: a.tipoAuditoria || null,
       tipo_amplio: a.tipoAmplio || null,
+      estatus: a.estatus || null,
+      tipo_registro: a.tipoRegistro || "AUDITORIA",
       ciudad: a.ciudad || null,
       modalidad: a.modalidad || null,
       auditor_responsable: a.auditorResponsable || null,
