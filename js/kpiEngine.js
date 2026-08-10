@@ -98,13 +98,16 @@ QA.kpiEngine = (function () {
    * Programa: programadas vs ejecutadas por mes (+ extraordinarias)
    * ------------------------------------------------------------------ */
   /** Mejor fecha disponible para ubicar una extraordinaria en el mes en que
-   * realmente se ejecutó: no tiene fecha programada por definición. Se usa
-   * "fechaEjecucionReal" (columna "Ejecucion Reprogramada" del Excel, o
-   * editada a mano en el formulario) — sin ella, la auditoría simplemente
-   * no aparece en el gráfico mensual en vez de mostrar una fecha inferida
-   * potencialmente incorrecta (ver historial de la app). */
+   * realmente se ejecutó. Prioriza "fechaEjecucionReal" (columna
+   * "Ejecucion Reprogramada" del Excel, o editada a mano en el formulario).
+   * Si no está diligenciada, cae a "fechaProgramada" ("Fecha Proyectada"):
+   * a diferencia del histórico basado en fecha de archivo (no confiable),
+   * esta fecha viene del Excel mantenido a mano por el equipo QA — muchas
+   * extraordinarias sí tienen una fecha proyectada aunque nunca hayan
+   * estado en el cronograma originalmente aprobado. Sin ninguna de las 2,
+   * la auditoría no aparece en el gráfico mensual. */
   function fechaEjecucionExtraordinaria(a) {
-    return a.fechaEjecucionReal || null;
+    return a.fechaEjecucionReal || a.fechaProgramada || null;
   }
 
   function programaPorMes(audits) {
