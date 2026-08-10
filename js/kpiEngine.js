@@ -42,8 +42,8 @@ QA.kpiEngine = (function () {
 
     const en30dias = (() => {
       const limite = new Date(today.getTime() + QA.config.KPI.PROXIMOS_DIAS * 86400000);
-      return audits.filter(a => a.fechaProgramada && a.estadoCalculado !== EST.EJECUTADA &&
-        a.fechaProgramada.getTime() >= today.getTime() && a.fechaProgramada.getTime() <= limite.getTime());
+      return audits.filter(a => a.fechaReferencia && a.estadoCalculado !== EST.EJECUTADA &&
+        a.fechaReferencia.getTime() >= today.getTime() && a.fechaReferencia.getTime() <= limite.getTime());
     })();
 
     const hallazgosAbiertos = findings.filter(f => estadoEfectivo(f) === "Abierto");
@@ -97,31 +97,21 @@ QA.kpiEngine = (function () {
   /* ------------------------------------------------------------------ *
    * Programa: programadas vs ejecutadas por mes (+ extraordinarias)
    * ------------------------------------------------------------------ */
-  /** Mejor fecha disponible para ubicar una extraordinaria en el mes en que
-   * realmente se ejecutó. Prioriza "fechaEjecucionReal" (columna
-   * "Ejecucion Reprogramada" del Excel, o editada a mano en el formulario).
-   * Si no está diligenciada, cae a "fechaProgramada" ("Fecha Proyectada"):
-   * a diferencia del histórico basado en fecha de archivo (no confiable),
-   * esta fecha viene del Excel mantenido a mano por el equipo QA — muchas
-   * extraordinarias sí tienen una fecha proyectada aunque nunca hayan
-   * estado en el cronograma originalmente aprobado. Sin ninguna de las 2,
-   * la auditoría no aparece en el gráfico mensual. */
-  function fechaEjecucionExtraordinaria(a) {
-    return a.fechaEjecucionReal || a.fechaProgramada || null;
-  }
-
+  /** Se ubica cada auditoría por "fechaReferencia" (ver
+   * statusEngine#computeFechaReferencia): columna J "Ejecucion Reprogramada"
+   * si tiene valor, si no columna I "Fecha Proyectada" — regla del usuario,
+   * aplica igual a programadas y extraordinarias. Sin ninguna de las 2, la
+   * auditoría no aparece en el gráfico mensual. */
   function programaPorMes(audits) {
     const buckets = Array.from({ length: 12 }, () => ({ programadas: 0, ejecutadas: 0, extraordinarias: 0 }));
     audits.forEach((a) => {
+      const fecha = a.fechaReferencia;
+      if (!fecha) return;
+      const m = fecha.getMonth();
       if (a.esExtraordinaria) {
-        if (a.estadoCalculado !== EST.EJECUTADA) return;
-        const fecha = fechaEjecucionExtraordinaria(a);
-        if (!fecha) return;
-        buckets[fecha.getMonth()].extraordinarias++;
+        if (a.estadoCalculado === EST.EJECUTADA) buckets[m].extraordinarias++;
         return;
       }
-      if (!a.fechaProgramada) return;
-      const m = a.fechaProgramada.getMonth();
       buckets[m].programadas++;
       if (a.estadoCalculado === EST.EJECUTADA) buckets[m].ejecutadas++;
     });

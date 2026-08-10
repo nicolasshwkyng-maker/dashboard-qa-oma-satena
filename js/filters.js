@@ -47,7 +47,7 @@ QA.filters = (function () {
       clasificaciones = new Set(), modalidades = new Set(), ubicaciones = new Set(), auditores = new Set();
 
     audits.forEach((a) => {
-      if (a.fechaProgramada) { years.add(a.fechaProgramada.getFullYear()); months.add(a.fechaProgramada.getMonth()); }
+      if (a.fechaReferencia) { years.add(a.fechaReferencia.getFullYear()); months.add(a.fechaReferencia.getMonth()); }
       if (a.tipoAmplio === "Proveedor") proveedores.add(a.auditado);
       if (a.tipoAmplio === "Área Interna") areasInternas.add(a.auditado);
       if (a.clasificacionLabel) clasificaciones.add(a.clasificacionLabel);
@@ -74,8 +74,8 @@ QA.filters = (function () {
    * Aplicación de filtros
    * ------------------------------------------------------------------ */
   function auditMatches(a, s) {
-    if (s.anio && (!a.fechaProgramada || a.fechaProgramada.getFullYear() !== Number(s.anio))) return false;
-    if (s.mes !== "" && s.mes !== undefined && (!a.fechaProgramada || a.fechaProgramada.getMonth() !== Number(s.mes))) return false;
+    if (s.anio && (!a.fechaReferencia || a.fechaReferencia.getFullYear() !== Number(s.anio))) return false;
+    if (s.mes !== "" && s.mes !== undefined && (!a.fechaReferencia || a.fechaReferencia.getMonth() !== Number(s.mes))) return false;
     if (s.proveedor && a.auditado !== s.proveedor) return false;
     if (s.areaInterna && a.auditado !== s.areaInterna) return false;
     if (s.clasificacion && a.clasificacionLabel !== s.clasificacion) return false;

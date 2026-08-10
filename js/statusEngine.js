@@ -82,6 +82,18 @@ QA.statusEngine = (function () {
   }
 
   /**
+   * Fecha principal de referencia de una auditoría (para filtros de Año/Mes,
+   * el gráfico mensual y "Próximos 30 días"): columna J "Ejecucion
+   * Reprogramada" (fechaEjecucionReal) si tiene valor — reemplaza a la
+   * columna I; si J está en blanco, se mantiene la columna I "Fecha
+   * Proyectada" (fechaProgramada). Regla del usuario, aplica a TODAS las
+   * auditorías (programadas y extraordinarias por igual).
+   */
+  function computeFechaReferencia(audit) {
+    return audit.fechaEjecucionReal || audit.fechaProgramada || null;
+  }
+
+  /**
    * Aplica el motor de estado a todas las auditorías (in-place + devuelve
    * el arreglo). `findingsByAuditId` es un Map<auditoria_id, hallazgo[]>
    * (ver app.js#attachFindingsToAudits) para calcular el rollup de cierre.
@@ -91,10 +103,11 @@ QA.statusEngine = (function () {
       audit.estadoCalculado = computeEstado(audit);
       audit.donutBucket = computeDonutBucket(audit);
       audit.cierreRollup = computeAuditoriaRollup(audit.estadoCalculado, findingsByAuditId ? findingsByAuditId.get(audit.id) : null);
-      audit.diasParaVencer = audit.fechaProgramada ? u.daysBetween(new Date(), new Date(audit.fechaProgramada)) : null;
+      audit.fechaReferencia = computeFechaReferencia(audit);
+      audit.diasParaVencer = audit.fechaReferencia ? u.daysBetween(new Date(), new Date(audit.fechaReferencia)) : null;
     });
     return audits;
   }
 
-  return { ESTADOS, CIERRE, computeEstado, computeCierreHallazgo, computeAuditoriaRollup, computeDonutBucket, applyAll };
+  return { ESTADOS, CIERRE, computeEstado, computeCierreHallazgo, computeAuditoriaRollup, computeDonutBucket, computeFechaReferencia, applyAll };
 })();
