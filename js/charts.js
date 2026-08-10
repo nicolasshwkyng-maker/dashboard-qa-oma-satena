@@ -63,11 +63,33 @@ QA.charts = (function () {
     return instances[id];
   }
 
-  function barConfig({ labels, datasets, horizontal, stacked }) {
+  /** Drill-down: todo gráfico clicable recibe `onClick(label, datasetLabel,
+   * index, datasetIndex)` — `label` es el valor del eje (categoría/mes),
+   * `datasetLabel` el nombre de la serie (para gráficos con más de una,
+   * ej. "Ejecutadas" vs "No Programadas Ejecutadas"), e `index`/
+   * `datasetIndex` los índices crudos de Chart.js por si hacen falta
+   * (ej. número de mes 0-11). También cambia el cursor a "pointer" al
+   * pasar por encima de un elemento clicable. */
+  function withClickHandlers(options, onClick) {
+    if (!onClick) return options;
+    options.onClick = (evt, elements, chart) => {
+      if (!elements.length) return;
+      const el = elements[0];
+      const label = chart.data.labels[el.index];
+      const ds = chart.data.datasets[el.datasetIndex];
+      onClick(label, ds ? ds.label : null, el.index, el.datasetIndex);
+    };
+    options.onHover = (evt, elements) => {
+      if (evt.native && evt.native.target) evt.native.target.style.cursor = elements.length ? "pointer" : "default";
+    };
+    return options;
+  }
+
+  function barConfig({ labels, datasets, horizontal, stacked, onClick }) {
     return {
       type: "bar",
       data: { labels, datasets },
-      options: {
+      options: withClickHandlers({
         indexAxis: horizontal ? "y" : "x",
         responsive: true,
         maintainAspectRatio: false,
@@ -76,18 +98,18 @@ QA.charts = (function () {
           x: { stacked: !!stacked, grid: { display: !horizontal }, ticks: { autoSkip: false } },
           y: { stacked: !!stacked, grid: { display: horizontal, color: "#EDEBE3" }, beginAtZero: true },
         },
-      },
+      }, onClick),
     };
   }
 
-  function doughnutConfig(labels, data, colors) {
+  function doughnutConfig(labels, data, colors, onClick) {
     return {
       type: "doughnut",
       data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: "#fff" }] },
-      options: {
+      options: withClickHandlers({
         responsive: true, maintainAspectRatio: false, cutout: "65%",
         plugins: { legend: { position: "right", labels: { padding: 12 } } },
-      },
+      }, onClick),
     };
   }
 
@@ -156,7 +178,7 @@ QA.charts = (function () {
   /* ------------------------------------------------------------------ *
    * PROGRAMA
    * ------------------------------------------------------------------ */
-  function renderProgramaPorMes(d) {
+  function renderProgramaPorMes(d, onClick) {
     getOrCreate("chartProgramaMes", barConfig({
       labels: d.labels,
       datasets: [
@@ -164,74 +186,82 @@ QA.charts = (function () {
         { label: "Ejecutadas", data: d.ejecutadas, backgroundColor: PALETTE.verde, borderRadius: 4 },
         { label: "No Programadas Ejecutadas", data: d.extraordinarias, backgroundColor: PALETTE.morado, borderRadius: 4 },
       ],
+      onClick,
     }));
   }
 
   /** `canvasId` parametrizable para poder reusar el mismo gráfico en la
    * sección Auditorías (default) y en Inspecciones (ver app.js). */
-  function renderPorClasificacion(pairs, canvasId) {
+  function renderPorClasificacion(pairs, canvasId, onClick) {
     getOrCreate(canvasId || "chartClasificacion", barConfig({
       labels: pairs.map(p => p[0]),
       horizontal: true,
       datasets: [{ label: "Registros", data: pairs.map(p => p[1]), backgroundColor: CATEGORY_SERIES_COLORS, borderRadius: 4 }],
+      onClick,
     }));
   }
 
-  function renderPorModalidad(pairs, canvasId) {
+  function renderPorModalidad(pairs, canvasId, onClick) {
     getOrCreate(canvasId || "chartModalidad", doughnutConfig(
       pairs.map(p => p[0]), pairs.map(p => p[1]),
-      [PALETTE.azulM, PALETTE.tealM, PALETTE.grisM, PALETTE.amber]
+      [PALETTE.azulM, PALETTE.tealM, PALETTE.grisM, PALETTE.amber],
+      onClick
     ));
   }
 
-  function renderPorUbicacion(pairs, canvasId) {
+  function renderPorUbicacion(pairs, canvasId, onClick) {
     getOrCreate(canvasId || "chartUbicacion", barConfig({
       labels: pairs.map(p => p[0]),
       horizontal: true,
       datasets: [{ label: "Registros", data: pairs.map(p => p[1]), backgroundColor: PALETTE.azulM, borderRadius: 4 }],
+      onClick,
     }));
   }
 
-  function renderEstadoPrograma(buckets) {
+  function renderEstadoPrograma(buckets, onClick) {
     getOrCreate("chartEstadoPrograma", doughnutConfig(
       buckets.map(b => b.label), buckets.map(b => b.value),
-      buckets.map(b => DONUT_BUCKET_COLORS[b.label] || PALETTE.grisM)
+      buckets.map(b => DONUT_BUCKET_COLORS[b.label] || PALETTE.grisM),
+      onClick
     ));
   }
 
   /** Dona "Auditorías por Cierre" (rollup calculado desde sus hallazgos). */
-  function renderAuditoriasPorCierre(buckets) {
+  function renderAuditoriasPorCierre(buckets, onClick) {
     getOrCreate("chartAuditoriasPorCierre", doughnutConfig(
       buckets.map(b => b.label), buckets.map(b => b.value),
-      buckets.map(b => CIERRE_COLORS[b.label] || PALETTE.grisM)
+      buckets.map(b => CIERRE_COLORS[b.label] || PALETTE.grisM),
+      onClick
     ));
   }
 
   /* ------------------------------------------------------------------ *
    * HALLAZGOS
    * ------------------------------------------------------------------ */
-  function renderHallazgosEstado(pairs) {
+  function renderHallazgosEstado(pairs, onClick) {
     const colorFor = (label) => label === "Cerrado" ? PALETTE.verde : label === "Abierto" ? PALETTE.rojo : label === "Cierre Parcial" ? PALETTE.amber : PALETTE.grisM;
-    getOrCreate("chartHallazgosEstado", doughnutConfig(pairs.map(p => p[0]), pairs.map(p => p[1]), pairs.map(p => colorFor(p[0]))));
+    getOrCreate("chartHallazgosEstado", doughnutConfig(pairs.map(p => p[0]), pairs.map(p => p[1]), pairs.map(p => colorFor(p[0])), onClick));
   }
 
-  function renderHallazgosClasificacion(pairs) {
+  function renderHallazgosClasificacion(pairs, onClick) {
     getOrCreate("chartHallazgosClasificacion", barConfig({
       labels: pairs.map(p => (p[0] || "").length > 38 ? p[0].slice(0, 35) + "…" : p[0]),
       horizontal: true,
       datasets: [{ label: "Hallazgos", data: pairs.map(p => p[1]), backgroundColor: PALETTE.rojo, borderRadius: 4 }],
+      onClick: onClick ? (label, dsLabel, index) => onClick(pairs[index] ? pairs[index][0] : label, dsLabel, index) : undefined,
     }));
   }
 
-  function renderHallazgosProceso(pairs) {
+  function renderHallazgosProceso(pairs, onClick) {
     getOrCreate("chartHallazgosProceso", barConfig({
       labels: pairs.map(p => p[0]),
       horizontal: true,
       datasets: [{ label: "Hallazgos", data: pairs.map(p => p[1]), backgroundColor: PALETTE.morado, borderRadius: 4 }],
+      onClick,
     }));
   }
 
-  function renderHallazgosTendencia(d) {
+  function renderHallazgosTendencia(d, onClick) {
     getOrCreate("chartHallazgosTendencia", {
       type: "line",
       data: {
@@ -241,48 +271,52 @@ QA.charts = (function () {
           { label: "Cerrados", data: d.cerrados, borderColor: PALETTE.verde, backgroundColor: PALETTE.verdeL, tension: 0.3, fill: true },
         ],
       },
-      options: {
+      options: withClickHandlers({
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { position: "top", align: "end" } },
         scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-      },
+      }, onClick),
     });
   }
 
   /* ------------------------------------------------------------------ *
    * FAA Self Evaluation
    * ------------------------------------------------------------------ */
-  function renderFaaCategorias(pairs) {
+  function renderFaaCategorias(pairs, onClick) {
     getOrCreate("chartFaaCategorias", barConfig({
       labels: pairs.map(p => p[0]),
       horizontal: true,
       datasets: [{ label: "Documentos", data: pairs.map(p => p[1]), backgroundColor: PALETTE.azulM, borderRadius: 4 }],
+      onClick,
     }));
   }
 
   /* ------------------------------------------------------------------ *
    * Punto de entrada: recibe TODO lo agregado (kpiEngine) y pinta todo.
+   * `handlers` (opcional) trae un callback de drill-down por gráfico —
+   * ver app.js#renderEverything para cómo se arman.
    * ------------------------------------------------------------------ */
-  function renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo) {
+  function renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo, handlers) {
+    handlers = handlers || {};
     // Resumen Ejecutivo: SOLO Auditorías (tipoRegistro AUDITORIA) — las
     // Inspecciones no deben sumar aquí, tienen su propio resumen aparte.
     renderAvanceGauge(QA.kpiEngine.avanceEsperadoVsReal(auditoriasSoloTipo));
-    renderProgramaPorMes(QA.kpiEngine.programaPorMes(auditoriasSoloTipo));
-    renderEstadoPrograma(QA.kpiEngine.estadoPrograma(auditoriasSoloTipo));
-    renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(auditoriasSoloTipo));
-    renderHallazgosEstado(QA.kpiEngine.hallazgosPorEstado(findings));
-    renderHallazgosClasificacion(QA.kpiEngine.hallazgosPorClasificacion(findings));
-    renderHallazgosProceso(QA.kpiEngine.hallazgosPorProceso(findings));
-    renderHallazgosTendencia(QA.kpiEngine.hallazgosTendenciaMensual(findings));
+    renderProgramaPorMes(QA.kpiEngine.programaPorMes(auditoriasSoloTipo), handlers.onProgramaMes);
+    renderEstadoPrograma(QA.kpiEngine.estadoPrograma(auditoriasSoloTipo), handlers.onEstadoPrograma);
+    renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(auditoriasSoloTipo), handlers.onAuditoriasPorCierre);
+    renderHallazgosEstado(QA.kpiEngine.hallazgosPorEstado(findings), handlers.onHallazgosEstado);
+    renderHallazgosClasificacion(QA.kpiEngine.hallazgosPorClasificacion(findings), handlers.onHallazgosClasificacion);
+    renderHallazgosProceso(QA.kpiEngine.hallazgosPorProceso(findings), handlers.onHallazgosProceso);
+    renderHallazgosTendencia(QA.kpiEngine.hallazgosTendenciaMensual(findings), handlers.onHallazgosTendencia);
 
     // Auditorías (sección propia): solo tipo AUDITORIA
-    renderPorClasificacion(QA.kpiEngine.porClasificacion(auditoriasSoloTipo), "chartClasificacion");
-    renderPorModalidad(QA.kpiEngine.porModalidad(auditoriasSoloTipo), "chartModalidad");
-    renderPorUbicacion(QA.kpiEngine.porUbicacion(auditoriasSoloTipo), "chartUbicacion");
+    renderPorClasificacion(QA.kpiEngine.porClasificacion(auditoriasSoloTipo), "chartClasificacion", handlers.onAuditoriasClasificacion);
+    renderPorModalidad(QA.kpiEngine.porModalidad(auditoriasSoloTipo), "chartModalidad", handlers.onAuditoriasModalidad);
+    renderPorUbicacion(QA.kpiEngine.porUbicacion(auditoriasSoloTipo), "chartUbicacion", handlers.onAuditoriasUbicacion);
 
     // Inspecciones (sección propia): solo tipo INSPECCION
-    renderPorClasificacion(QA.kpiEngine.porClasificacion(inspeccionesSoloTipo), "chartInspClasificacion");
-    renderPorUbicacion(QA.kpiEngine.porUbicacion(inspeccionesSoloTipo), "chartInspUbicacion");
+    renderPorClasificacion(QA.kpiEngine.porClasificacion(inspeccionesSoloTipo), "chartInspClasificacion", handlers.onInspeccionesClasificacion);
+    renderPorUbicacion(QA.kpiEngine.porUbicacion(inspeccionesSoloTipo), "chartInspUbicacion", handlers.onInspeccionesUbicacion);
   }
 
   /** Chart.js calcula el tamaño del canvas en el momento de crearlo: si el

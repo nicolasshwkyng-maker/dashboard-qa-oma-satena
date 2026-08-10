@@ -173,6 +173,13 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .qa-kpi-clickable { cursor: pointer; transition: box-shadow .12s ease, transform .12s ease; }
 .qa-kpi-clickable:hover { box-shadow: 0 2px 10px rgba(12, 68, 124, .15); transform: translateY(-1px); }
 
+/* Resumen Ejecutivo en 2 columnas: tarjetas KPI a la izquierda (ancho fijo,
+   se apilan verticalmente por grupo), gráficas a la derecha (ocupan el
+   resto del ancho). En pantallas angostas colapsa a 1 columna (ver media
+   query más abajo). */
+.qa-resumen-columns { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+.qa-resumen-col-charts .qa-chart-grid:last-child { margin-bottom: 0; }
+
 /* Grupos de tarjetas KPI (Resumen Ejecutivo): cada grupo agrupa tarjetas
    que comparten un mismo tema, con un color de acento distinto por grupo. */
 .qa-kpi-group { margin-bottom: 20px; }
@@ -254,6 +261,7 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 @media (max-width: 900px) {
   .qa-kpi-grid, .qa-kpi-grid.cols-4, .qa-kpi-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
   .qa-chart-grid.cols-2, .qa-chart-grid.cols-3 { grid-template-columns: 1fr; }
+  .qa-resumen-columns { grid-template-columns: 1fr; }
   .qa-header { flex-direction: column; align-items: flex-start; }
   .qa-filter-clear { margin-left: 0; }
 }

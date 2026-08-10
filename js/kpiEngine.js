@@ -150,6 +150,22 @@ QA.kpiEngine = (function () {
     };
   }
 
+  /** Auditorías detrás de UNA barra del gráfico mensual (drill-down al
+   * hacer clic) — mismo criterio exacto que programaPorMes, para que el
+   * detalle siempre coincida con el número mostrado. `categoria` ∈
+   * "programadas" | "ejecutadas" | "extraordinarias". */
+  function auditoriasDeMes(audits, monthIndex, categoria) {
+    return audits.filter((a) => {
+      const fecha = a.fechaReferencia;
+      if (!fecha || fecha.getMonth() !== monthIndex) return false;
+      if (a.esExtraordinaria) return categoria === "extraordinarias" && a.estadoCalculado === EST.EJECUTADA;
+      if (categoria === "extraordinarias") return false;
+      if (categoria === "programadas") return true;
+      if (categoria === "ejecutadas") return a.estadoCalculado === EST.EJECUTADA;
+      return false;
+    });
+  }
+
   function countBy(audits, keyFn) {
     const map = new Map();
     audits.forEach((a) => {
@@ -159,10 +175,29 @@ QA.kpiEngine = (function () {
     return [...map.entries()].sort((a, b) => b[1] - a[1]);
   }
 
-  function porClasificacion(audits) { return countBy(audits, a => a.clasificacionLabel); }
-  function porModalidad(audits) { return countBy(audits, a => a.modalidad); }
-  function porUbicacion(audits) { return countBy(audits, a => a.ciudad); }
-  function faaPorCategoria(faaDocs) { return countBy(faaDocs, d => d.categoryLabel); }
+  /** Items detrás de UNA barra/porción de dona agrupada por `keyFn` — mismo
+   * criterio exacto que countBy, para drill-down al hacer clic en el
+   * gráfico (ver app.js). */
+  function itemsWhere(items, keyFn, label) {
+    return items.filter(it => (keyFn(it) || "No especificado") === label);
+  }
+
+  const keyClasificacion = a => a.clasificacionLabel;
+  const keyModalidad = a => a.modalidad;
+  const keyUbicacion = a => a.ciudad;
+  const keyFaaCategoria = d => d.categoryLabel;
+  const keyHallazgoClasificacion = f => f.clasificacionReporte;
+  const keyHallazgoProceso = f => f.procesoReporte;
+
+  function porClasificacion(audits) { return countBy(audits, keyClasificacion); }
+  function porModalidad(audits) { return countBy(audits, keyModalidad); }
+  function porUbicacion(audits) { return countBy(audits, keyUbicacion); }
+  function faaPorCategoria(faaDocs) { return countBy(faaDocs, keyFaaCategoria); }
+
+  function auditoriasPorClasificacionItems(audits, label) { return itemsWhere(audits, keyClasificacion, label); }
+  function auditoriasPorModalidadItems(audits, label) { return itemsWhere(audits, keyModalidad, label); }
+  function auditoriasPorUbicacionItems(audits, label) { return itemsWhere(audits, keyUbicacion, label); }
+  function faaPorCategoriaItems(faaDocs, label) { return itemsWhere(faaDocs, keyFaaCategoria, label); }
 
   function estadoPrograma(audits) {
     const order = ["Por Ejecutar", "Ejecutada", "No Ejecutada", "Cancelada", "Extraordinarias"];
@@ -170,6 +205,9 @@ QA.kpiEngine = (function () {
     const map = new Map(counts);
     return order.map(label => ({ label, value: map.get(label) || 0 }));
   }
+  function estadoProgramaItems(audits, label) { return audits.filter(a => a.donutBucket === label); }
+
+  const CIERRE_LABEL_FOR = { CERRADO: "Cerrada", ABIERTO: "Abierta", CIERRE_PARCIAL: "Cierre Parcial" };
 
   /** Dona "Auditorías por Cierre": rollup calculado a partir de los
    * hallazgos vinculados a cada auditoría EJECUTADA (ver
@@ -177,11 +215,13 @@ QA.kpiEngine = (function () {
    * tienen "cierreRollup" (null) y quedan fuera de este gráfico. */
   function auditoriasPorCierre(audits) {
     const order = ["Cerrada", "Abierta", "Cierre Parcial"];
-    const labelFor = { CERRADO: "Cerrada", ABIERTO: "Abierta", CIERRE_PARCIAL: "Cierre Parcial" };
     const ejecutadas = audits.filter(a => a.cierreRollup);
-    const counts = countBy(ejecutadas, a => labelFor[a.cierreRollup]);
+    const counts = countBy(ejecutadas, a => CIERRE_LABEL_FOR[a.cierreRollup]);
     const map = new Map(counts);
     return order.map(label => ({ label, value: map.get(label) || 0 }));
+  }
+  function auditoriasPorCierreItems(audits, label) {
+    return audits.filter(a => a.cierreRollup && CIERRE_LABEL_FOR[a.cierreRollup] === label);
   }
 
   /* ------------------------------------------------------------------ *
@@ -190,12 +230,15 @@ QA.kpiEngine = (function () {
   function hallazgosPorEstado(findings) {
     return countBy(findings, f => estadoEfectivo(f));
   }
+  function hallazgosPorEstadoItems(findings, label) { return itemsWhere(findings, estadoEfectivo, label); }
   function hallazgosPorClasificacion(findings) {
-    return countBy(findings, f => f.clasificacionReporte);
+    return countBy(findings, keyHallazgoClasificacion);
   }
+  function hallazgosPorClasificacionItems(findings, label) { return itemsWhere(findings, keyHallazgoClasificacion, label); }
   function hallazgosPorProceso(findings) {
-    return countBy(findings, f => f.procesoReporte);
+    return countBy(findings, keyHallazgoProceso);
   }
+  function hallazgosPorProcesoItems(findings, label) { return itemsWhere(findings, keyHallazgoProceso, label); }
   /** Emitidos (por fecha de notificación) vs cerrados (por fecha de cierre de reporte), por mes. */
   function hallazgosTendenciaMensual(findings) {
     const buckets = Array.from({ length: 12 }, () => ({ emitidos: 0, cerrados: 0 }));
@@ -206,13 +249,25 @@ QA.kpiEngine = (function () {
     });
     return { labels: u.MONTH_ABBR, emitidos: buckets.map(b => b.emitidos), cerrados: buckets.map(b => b.cerrados) };
   }
+  /** `serie` ∈ "emitidos" | "cerrados" — drill-down del gráfico de tendencia mensual. */
+  function hallazgosTendenciaItems(findings, monthIndex, serie) {
+    if (serie === "cerrados") return findings.filter(f => f.fechaCierreReporte && f.fechaCierreReporte.getMonth() === monthIndex);
+    return findings.filter((f) => {
+      const d = f.fechaNotificacion || f.fechaInicio;
+      return d && d.getMonth() === monthIndex;
+    });
+  }
   function hallazgosEmitidosVsCerrados(findings) {
     return { emitidos: findings.length, cerrados: findings.filter(f => estadoEfectivo(f) === "Cerrado").length };
   }
 
   return {
-    computeKpis, avanceEsperadoVsReal, programaPorMes, porClasificacion, porModalidad, porUbicacion, faaPorCategoria, porTipoRegistro,
-    estadoPrograma, auditoriasPorCierre, hallazgosPorEstado, hallazgosPorClasificacion, hallazgosPorProceso,
-    hallazgosTendenciaMensual, hallazgosEmitidosVsCerrados,
+    computeKpis, avanceEsperadoVsReal, programaPorMes, auditoriasDeMes,
+    porClasificacion, porModalidad, porUbicacion, faaPorCategoria, porTipoRegistro,
+    auditoriasPorClasificacionItems, auditoriasPorModalidadItems, auditoriasPorUbicacionItems, faaPorCategoriaItems,
+    estadoPrograma, estadoProgramaItems, auditoriasPorCierre, auditoriasPorCierreItems,
+    hallazgosPorEstado, hallazgosPorEstadoItems, hallazgosPorClasificacion, hallazgosPorClasificacionItems,
+    hallazgosPorProceso, hallazgosPorProcesoItems, hallazgosTendenciaMensual, hallazgosTendenciaItems,
+    hallazgosEmitidosVsCerrados,
   };
 })();

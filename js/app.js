@@ -320,6 +320,14 @@
         <td>${u.escapeHtml(estadoEfectivoHallazgo(f) || "—")}</td>
         <td>${u.formatDate(f.fechaInicio)}</td>
       </tr>`).join("") : `<tr><td colspan="5" class="text-center text-muted py-3">Sin registros.</td></tr>`;
+    } else if (kind === "docs") {
+      head.innerHTML = "<tr><th>Categoría</th><th>Documento</th><th>Fecha</th><th>Tamaño</th></tr>";
+      body.innerHTML = items.length ? items.map(d => `<tr>
+        <td>${u.escapeHtml(d.categoryLabel || "—")}</td>
+        <td>${u.escapeHtml(d.name || "—")}</td>
+        <td>${d.lastModified ? u.formatDate(new Date(d.lastModified)) : "—"}</td>
+        <td>${d.size ? Math.round(d.size / 1024) + " KB" : "—"}</td>
+      </tr>`).join("") : `<tr><td colspan="4" class="text-center text-muted py-3">Sin registros.</td></tr>`;
     } else {
       head.innerHTML = "<tr><th>Auditoría / Inspección</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr>";
       body.innerHTML = items.length ? items.map(a => `<tr>
@@ -537,8 +545,43 @@
       kpiCardHtml("Categorías con Evidencia", categorias.size),
       kpiCardHtml("Auditorías Extraordinarias Generadas", categorias.size, "Suman a la ejecución general del programa"),
     ].join("");
-    QA.charts.renderFaaCategorias(QA.kpiEngine.faaPorCategoria(docs));
+    QA.charts.renderFaaCategorias(QA.kpiEngine.faaPorCategoria(docs), (label) => {
+      openKpiModal(`FAA — ${label}`, QA.kpiEngine.faaPorCategoriaItems(docs, label), "docs");
+    });
     QA.tables.updateFaaTable(docs);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Drill-down de gráficas: un callback por gráfico que abre el modal de
+   * detalle (openKpiModal) con los registros crudos detrás de la barra/
+   * porción clicada — ver js/charts.js#renderAll y js/kpiEngine.js (las
+   * funciones "...Items" hacen el mismo filtro exacto que agrega los datos
+   * del gráfico, para que el detalle siempre cuadre con lo mostrado).
+   * ------------------------------------------------------------------ */
+  function buildChartDrilldownHandlers(auditoriasSoloTipo, inspeccionesSoloTipo, findings) {
+    const K = QA.kpiEngine;
+    return {
+      onProgramaMes: (label, datasetLabel, monthIndex) => {
+        const categoriaMap = { "Programadas": "programadas", "Ejecutadas": "ejecutadas", "No Programadas Ejecutadas": "extraordinarias" };
+        const categoria = categoriaMap[datasetLabel];
+        if (!categoria) return;
+        openKpiModal(`${datasetLabel} — ${u.MONTH_NAMES[monthIndex]}`, K.auditoriasDeMes(auditoriasSoloTipo, monthIndex, categoria), "audits");
+      },
+      onEstadoPrograma: (label) => openKpiModal(`Estado del Programa — ${label}`, K.estadoProgramaItems(auditoriasSoloTipo, label), "audits"),
+      onAuditoriasPorCierre: (label) => openKpiModal(`Auditorías por Cierre — ${label}`, K.auditoriasPorCierreItems(auditoriasSoloTipo, label), "audits"),
+      onHallazgosEstado: (label) => openKpiModal(`Hallazgos — ${label}`, K.hallazgosPorEstadoItems(findings, label), "findings"),
+      onHallazgosClasificacion: (label) => openKpiModal(`Hallazgos por Causa Raíz — ${label}`, K.hallazgosPorClasificacionItems(findings, label), "findings"),
+      onHallazgosProceso: (label) => openKpiModal(`Hallazgos por Proceso — ${label}`, K.hallazgosPorProcesoItems(findings, label), "findings"),
+      onHallazgosTendencia: (label, datasetLabel, monthIndex) => {
+        const serie = datasetLabel === "Cerrados" ? "cerrados" : "emitidos";
+        openKpiModal(`Hallazgos ${datasetLabel} — ${u.MONTH_NAMES[monthIndex]}`, K.hallazgosTendenciaItems(findings, monthIndex, serie), "findings");
+      },
+      onAuditoriasClasificacion: (label) => openKpiModal(`Auditorías — ${label}`, K.auditoriasPorClasificacionItems(auditoriasSoloTipo, label), "audits"),
+      onAuditoriasModalidad: (label) => openKpiModal(`Auditorías — ${label}`, K.auditoriasPorModalidadItems(auditoriasSoloTipo, label), "audits"),
+      onAuditoriasUbicacion: (label) => openKpiModal(`Auditorías — ${label}`, K.auditoriasPorUbicacionItems(auditoriasSoloTipo, label), "audits"),
+      onInspeccionesClasificacion: (label) => openKpiModal(`Inspecciones — ${label}`, K.auditoriasPorClasificacionItems(inspeccionesSoloTipo, label), "audits"),
+      onInspeccionesUbicacion: (label) => openKpiModal(`Inspecciones — ${label}`, K.auditoriasPorUbicacionItems(inspeccionesSoloTipo, label), "audits"),
+    };
   }
 
   /* ------------------------------------------------------------------ *
@@ -557,7 +600,8 @@
     state.lastKpis = k;
     renderKpis(k);
 
-    QA.charts.renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo);
+    QA.charts.renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo,
+      buildChartDrilldownHandlers(auditoriasSoloTipo, inspeccionesSoloTipo, findings));
     renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsReal(auditoriasSoloTipo));
     renderSubsectionKpis("kpiGridPrograma", auditoriasSoloTipo);
     renderSubsectionKpis("kpiGridInspecciones", inspeccionesSoloTipo);
