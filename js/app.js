@@ -218,32 +218,51 @@
    * el modal de detalle sepa qué columnas pintar (ver openKpiModal). Las
    * tarjetas sin listKey (ej. "% Cerrados") no son clicables.
    */
-  function kpiCardHtml(label, value, hint, listKey, kind) {
+  function kpiCardHtml(label, value, hint, listKey, kind, accent) {
     const clickable = !!listKey;
     const attrs = clickable ? ` data-kpi-list="${listKey}" data-kpi-kind="${kind}" data-kpi-title="${u.escapeHtml(label)}" role="button" tabindex="0"` : "";
-    return `<div class="qa-kpi-card${clickable ? " qa-kpi-clickable" : ""}"${attrs}><div class="qa-kpi-value">${u.escapeHtml(String(value))}</div><div class="qa-kpi-label">${u.escapeHtml(label)}</div>${hint ? `<div class="qa-kpi-hint">${u.escapeHtml(hint)}</div>` : ""}</div>`;
+    const cls = ["qa-kpi-card", clickable ? "qa-kpi-clickable" : "", accent ? `qa-kpi-card--${accent}` : ""].filter(Boolean).join(" ");
+    return `<div class="${cls}"${attrs}><div class="qa-kpi-value">${u.escapeHtml(String(value))}</div><div class="qa-kpi-label">${u.escapeHtml(label)}</div>${hint ? `<div class="qa-kpi-hint">${u.escapeHtml(hint)}</div>` : ""}</div>`;
+  }
+
+  /** Agrupa tarjetas relacionadas bajo un título, para que el Resumen
+   * Ejecutivo se lea por temas en vez de una sola cuadrícula plana. */
+  function kpiGroupHtml(title, cardsHtml) {
+    return `<div class="qa-kpi-group"><div class="qa-kpi-group-title">${u.escapeHtml(title)}</div><div class="qa-kpi-grid">${cardsHtml}</div></div>`;
   }
 
   function renderKpis(k) {
     document.getElementById("kpiGridResumen").innerHTML = [
-      kpiCardHtml("Total de Registros", k.totalAuditorias, `${k.programadas} programados + ${k.extraordinarias} extraordinarios`, "totalAuditorias", "audits"),
-      kpiCardHtml("Programados", k.programadas, null, "programadas", "audits"),
-      kpiCardHtml("Ejecutados", k.ejecutadas, "Incluye extraordinarios ejecutados", "ejecutadas", "audits"),
-      kpiCardHtml("Ejecutados Programados", k.ejecutadasProgramadas, "Ejecutados que SÍ estaban en el cronograma (excluye extraordinarios)", "ejecutadasProgramadas", "audits"),
-      kpiCardHtml("Por Ejecutar", k.porEjecutar, null, "porEjecutar", "audits"),
-      kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits"),
-      kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits"),
-      kpiCardHtml("Extraordinarios (No Programados)", k.extraordinarias, `${k.extraordinariasEjecutadas} ejecutados`, "extraordinarias", "audits"),
-      kpiCardHtml("% Cumplimiento Cronograma Original", k.cumplimientoOriginalPct + "%", "Ejecutados programados / Total programado (nunca > 100%)", "ejecutadasProgramadas", "audits"),
-      kpiCardHtml("% Avance Total del Programa", k.avanceTotalPct + "%", "Incluye extraordinarios ejecutados — puede superar 100%", "ejecutadas", "audits"),
-      kpiCardHtml("Auditorías Cerradas", k.auditoriasCerradas, "Todos sus hallazgos cerrados", "auditoriasCerradas", "audits"),
-      kpiCardHtml("Auditorías Abiertas", k.auditoriasAbiertas, "Todos sus hallazgos abiertos", "auditoriasAbiertas", "audits"),
-      kpiCardHtml("Auditorías Cierre Parcial", k.auditoriasCierreParcial, "Mezcla de hallazgos abiertos/cerrados", "auditoriasCierreParcial", "audits"),
-      kpiCardHtml("Hallazgos Abiertos", k.hallazgosAbiertos, null, "hallazgosAbiertos", "findings"),
-      kpiCardHtml("Hallazgos Cerrados", k.hallazgosCerrados, null, "hallazgosCerrados", "findings"),
-      kpiCardHtml("Hallazgos Cierre Parcial", k.hallazgosCierreParcial, null, "hallazgosCierreParcial", "findings"),
-      kpiCardHtml("Total de Hallazgos", k.hallazgosTotal, null, "hallazgosTotal", "findings"),
-      kpiCardHtml("Próximos 30 Días", k.proximos30Dias, null, "proximos30Dias", "audits"),
+      kpiGroupHtml("Programa", [
+        kpiCardHtml("Total de Registros", k.totalAuditorias, `${k.programadas} programados + ${k.extraordinarias} extraordinarios`, "totalAuditorias", "audits"),
+        kpiCardHtml("Programados", k.programadas, null, "programadas", "audits"),
+        kpiCardHtml("Extraordinarios (No Programados)", k.extraordinarias, `${k.extraordinariasEjecutadas} ejecutados`, "extraordinarias", "audits"),
+      ].join("")),
+      kpiGroupHtml("Ejecución", [
+        kpiCardHtml("Ejecutados", k.ejecutadas, "Incluye extraordinarios ejecutados", "ejecutadas", "audits", "teal"),
+        kpiCardHtml("Ejecutados Programados", k.ejecutadasProgramadas, "Ejecutados que SÍ estaban en el cronograma", "ejecutadasProgramadas", "audits", "teal"),
+        kpiCardHtml("Por Ejecutar", k.porEjecutar, null, "porEjecutar", "audits", "teal"),
+        kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits", "teal"),
+        kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits", "teal"),
+      ].join("")),
+      kpiGroupHtml("Cumplimiento", [
+        kpiCardHtml("% Cumplimiento Cronograma Original", k.cumplimientoOriginalPct + "%", "Ejecutados programados / Total programado (nunca > 100%)", "ejecutadasProgramadas", "audits", "morado"),
+        kpiCardHtml("% Avance Total del Programa", k.avanceTotalPct + "%", "Incluye extraordinarios ejecutados — puede superar 100%", "ejecutadas", "audits", "morado"),
+      ].join("")),
+      kpiGroupHtml("Cierre de Auditorías Ejecutadas", [
+        kpiCardHtml("Cerradas", k.auditoriasCerradas, "Todos sus hallazgos cerrados", "auditoriasCerradas", "audits", "amber"),
+        kpiCardHtml("Abiertas", k.auditoriasAbiertas, "Sin hallazgos, o con hallazgos abiertos", "auditoriasAbiertas", "audits", "amber"),
+        kpiCardHtml("Cierre Parcial", k.auditoriasCierreParcial, "Mezcla de hallazgos abiertos/cerrados", "auditoriasCierreParcial", "audits", "amber"),
+      ].join("")),
+      kpiGroupHtml("Hallazgos", [
+        kpiCardHtml("Total de Hallazgos", k.hallazgosTotal, null, "hallazgosTotal", "findings", "rojo"),
+        kpiCardHtml("Abiertos", k.hallazgosAbiertos, null, "hallazgosAbiertos", "findings", "rojo"),
+        kpiCardHtml("Cerrados", k.hallazgosCerrados, null, "hallazgosCerrados", "findings", "rojo"),
+        kpiCardHtml("Cierre Parcial", k.hallazgosCierreParcial, null, "hallazgosCierreParcial", "findings", "rojo"),
+      ].join("")),
+      kpiGroupHtml("Alertas", [
+        kpiCardHtml("Próximos 30 Días", k.proximos30Dias, "Por ejecutar con fecha cercana", "proximos30Dias", "audits", "gris"),
+      ].join("")),
     ].join("");
 
     document.getElementById("kpiGridHallazgos").innerHTML = [
