@@ -229,6 +229,7 @@
       kpiCardHtml("Total de Registros", k.totalAuditorias, `${k.programadas} programados + ${k.extraordinarias} extraordinarios`, "totalAuditorias", "audits"),
       kpiCardHtml("Programados", k.programadas, null, "programadas", "audits"),
       kpiCardHtml("Ejecutados", k.ejecutadas, "Incluye extraordinarios ejecutados", "ejecutadas", "audits"),
+      kpiCardHtml("Ejecutados Programados", k.ejecutadasProgramadas, "Ejecutados que SÍ estaban en el cronograma (excluye extraordinarios)", "ejecutadasProgramadas", "audits"),
       kpiCardHtml("Por Ejecutar", k.porEjecutar, null, "porEjecutar", "audits"),
       kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits"),
       kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits"),
