@@ -1,0 +1,68 @@
+name: Deploy Dashboard QA-OMA a GitHub Pages
+
+# Publica el contenido de este repo (la app estática) a GitHub Pages en cada
+# push a main. js/config.js NO se commitea (ver .gitignore) — este workflow
+# lo genera en el momento del build a partir de Secrets del repositorio, así
+# que las credenciales de Supabase nunca quedan en el historial de git.
+#
+# Antes de que esto funcione, en GitHub: Settings > Secrets and variables >
+# Actions, agrega 2 "Repository secrets":
+#   SUPABASE_URL       -> https://TU-PROYECTO.supabase.co
+#   SUPABASE_ANON_KEY  -> la anon public key (Project Settings > API)
+# Y en Settings > Pages, selecciona "Source: GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generar js/config.js desde Secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Faltan los secrets SUPABASE_URL / SUPABASE_ANON_KEY en la configuración del repositorio (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          cat > js/config.js << EOF
+          window.QA_CONFIG = {
+            SUPABASE_URL: "${SUPABASE_URL}",
+            SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY}",
+          };
+          EOF
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir artefacto
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Desplegar a GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

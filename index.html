@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard QA-OMA | SATENA MRO</title>
+<!-- Todas las librerías se cargan localmente desde vendor/ — la app funciona sin conexión a internet. -->
+<link rel="stylesheet" href="vendor/bootstrap.min.css">
+<link rel="stylesheet" href="vendor/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ==================================================================
+     PANTALLA DE INICIO DE SESIÓN
+     Los datos ahora viven en Supabase (Postgres en la nube), no en archivos
+     locales — se muestra esta pantalla hasta que haya una sesión válida de
+     Supabase Auth. Sin sesión, Row Level Security bloquea toda lectura y
+     escritura (ver supabase/schema.sql), así que no hay forma de ver datos
+     sin iniciar sesión primero.
+     ================================================================== -->
+<div id="setupScreen" class="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo"><img src="assets/logo_satena_blanco.png" alt="SATENA"></div>
+    <h1>Dashboard QA-OMA</h1>
+    <p class="setup-sub">Programa Anual de Auditorías de Aseguramiento de la Calidad — SATENA M.R.O.</p>
+
+    <div id="setupAlertBox"></div>
+
+    <form id="loginForm" autocomplete="on">
+      <div class="mb-2 text-start">
+        <label class="form-label" for="loginEmail">Correo</label>
+        <input type="email" class="form-control" id="loginEmail" autocomplete="username" required>
+      </div>
+      <div class="mb-2 text-start">
+        <label class="form-label" for="loginPassword">Contraseña</label>
+        <input type="password" class="form-control" id="loginPassword" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-qa-primary w-100 mt-2" id="btnLogin">Iniciar sesión</button>
+    </form>
+    <p class="setup-footnote">Acceso restringido al equipo QA-OMA. Los datos se leen y escriben directamente contra Supabase con Row Level Security — nadie sin sesión iniciada puede ver ni modificar información.</p>
+  </div>
+</div>
+
+<!-- ==================================================================
+     APLICACIÓN PRINCIPAL
+     ================================================================== -->
+<div id="appRoot" class="d-none">
+
+  <header class="qa-header">
+    <div class="qa-header-brand">
+      <img src="assets/logo_satena_blanco.png" alt="SATENA" class="qa-header-logo">
+      <div>
+        <div class="qa-header-title">Dashboard QA-OMA</div>
+        <div class="qa-header-sub">Programa Anual de Auditorías de Aseguramiento de la Calidad · SATENA M.R.O.</div>
+      </div>
+    </div>
+    <div class="qa-header-actions">
+      <span class="qa-header-updated" id="lblUltimaActualizacion"></span>
+      <button class="btn btn-header-action" id="btnRefreshData" title="Volver a pedir los datos a Supabase">↻ Actualizar datos</button>
+      <button class="btn btn-header-action" id="btnPrint" title="Imprimir la vista actual">🖶 Imprimir</button>
+      <button class="btn btn-header-action" id="btnExportPdf" title="Exportar todo el dashboard a PDF">⭳ Exportar PDF</button>
+      <button class="btn btn-header-action" id="btnLogout" title="Cerrar sesión">⏻ Cerrar sesión</button>
+    </div>
+  </header>
+
+  <nav class="qa-nav" id="qaNav">
+    <button class="qa-nav-item active" data-section="secResumen">Resumen Ejecutivo</button>
+    <button class="qa-nav-item" data-section="secPrograma">Programa de Auditorías</button>
+    <button class="qa-nav-item" data-section="secHallazgos">Hallazgos</button>
+    <button class="qa-nav-item" data-section="secFaa">FAA · Self Evaluation</button>
+  </nav>
+
+  <div class="qa-filters-bar no-print" id="filtersBar">
+    <div class="qa-filter"><label>Año</label><select id="fAnio" class="form-select form-select-sm"><option value="">Todos</option></select></div>
+    <div class="qa-filter"><label>Mes</label><select id="fMes" class="form-select form-select-sm"><option value="">Todos</option></select></div>
+    <div class="qa-filter"><label>Clasificación</label><select id="fClasificacion" class="form-select form-select-sm"><option value="">Todas</option></select></div>
+    <div class="qa-filter"><label>Tipo</label><select id="fTipo" class="form-select form-select-sm"><option value="">Todos</option></select></div>
+    <div class="qa-filter"><label>Proveedor</label><select id="fProveedor" class="form-select form-select-sm"><option value="">Todos</option></select></div>
+    <div class="qa-filter"><label>Área Interna</label><select id="fAreaInterna" class="form-select form-select-sm"><option value="">Todas</option></select></div>
+    <div class="qa-filter"><label>Modalidad</label><select id="fModalidad" class="form-select form-select-sm"><option value="">Todas</option></select></div>
+    <div class="qa-filter"><label>Ubicación</label><select id="fUbicacion" class="form-select form-select-sm"><option value="">Todas</option></select></div>
+    <div class="qa-filter"><label>Auditor</label><select id="fAuditor" class="form-select form-select-sm"><option value="">Todos</option></select></div>
+    <div class="qa-filter"><label>Estado</label>
+      <select id="fEstado" class="form-select form-select-sm">
+        <option value="">Todos</option>
+        <option value="EJECUTADA">Ejecutada</option>
+        <option value="EN_EJECUCION">En Ejecución</option>
+        <option value="VENCIDA">Vencida</option>
+        <option value="PENDIENTE">Pendiente</option>
+      </select>
+    </div>
+    <button class="btn btn-outline-qa btn-sm qa-filter-clear" id="btnClearFilters">Limpiar filtros</button>
+  </div>
+
+  <main id="qaMain">
+
+    <!-- ============================= RESUMEN EJECUTIVO ============================= -->
+    <section id="secResumen" class="qa-section">
+      <div class="qa-kpi-grid" id="kpiGridResumen"></div>
+      <div class="qa-chart-grid cols-2">
+        <div class="qa-chart-card"><div class="qa-chart-title">Estado del Programa</div><div class="qa-chart-canvas-wrap"><canvas id="chartEstadoPrograma"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Auditorías Programadas vs Ejecutadas por Mes</div><div class="qa-chart-canvas-wrap"><canvas id="chartProgramaMes"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- ============================= PROGRAMA DE AUDITORÍAS ============================= -->
+    <section id="secPrograma" class="qa-section d-none">
+      <div class="qa-chart-grid cols-3">
+        <div class="qa-chart-card"><div class="qa-chart-title">Por Clasificación</div><div class="qa-chart-canvas-wrap"><canvas id="chartClasificacion"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Por Modalidad</div><div class="qa-chart-canvas-wrap"><canvas id="chartModalidad"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Por Ubicación</div><div class="qa-chart-canvas-wrap"><canvas id="chartUbicacion"></canvas></div></div>
+      </div>
+      <div class="qa-table-card">
+        <div class="qa-table-card-header">
+          <div class="qa-chart-title mb-0">Auditorías</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-qa-primary btn-sm" id="btnNuevaAuditoria">+ Nueva Auditoría</button>
+            <button class="btn btn-outline-qa btn-sm" id="btnExportAuditoriasExcel">⭳ Exportar a Excel</button>
+          </div>
+        </div>
+        <div class="qa-table-hint text-muted small mb-1">Clic en una fila para editarla.</div>
+        <div class="table-responsive"><table id="tblAuditorias" class="table table-hover qa-table w-100"></table></div>
+      </div>
+    </section>
+
+    <!-- ============================= HALLAZGOS ============================= -->
+    <section id="secHallazgos" class="qa-section d-none">
+      <div class="qa-kpi-grid cols-4" id="kpiGridHallazgos"></div>
+      <div class="qa-chart-grid cols-3">
+        <div class="qa-chart-card"><div class="qa-chart-title">Por Estado</div><div class="qa-chart-canvas-wrap"><canvas id="chartHallazgosEstado"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Por Clasificación (causa raíz)</div><div class="qa-chart-canvas-wrap"><canvas id="chartHallazgosClasificacion"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Por Proceso</div><div class="qa-chart-canvas-wrap"><canvas id="chartHallazgosProceso"></canvas></div></div>
+      </div>
+      <div class="qa-chart-grid cols-1">
+        <div class="qa-chart-card"><div class="qa-chart-title">Tendencia Mensual — Emitidos vs Cerrados</div><div class="qa-chart-canvas-wrap tall"><canvas id="chartHallazgosTendencia"></canvas></div></div>
+      </div>
+      <div class="qa-table-card">
+        <div class="qa-table-card-header">
+          <div class="qa-chart-title mb-0">Hallazgos</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-qa-primary btn-sm" id="btnNuevoHallazgo">+ Nuevo Hallazgo</button>
+            <button class="btn btn-outline-qa btn-sm" id="btnExportHallazgosExcel">⭳ Exportar a Excel</button>
+          </div>
+        </div>
+        <div class="qa-table-hint text-muted small mb-1">Clic en el ＋ de una fila para ver la descripción; clic en el resto de la fila para editarla.</div>
+        <div class="table-responsive"><table id="tblHallazgos" class="table table-hover qa-table w-100"></table></div>
+      </div>
+    </section>
+
+    <!-- ============================= FAA SELF EVALUATION ============================= -->
+    <section id="secFaa" class="qa-section d-none">
+      <div class="qa-alert-info">
+        Panel dedicado a las autoevaluaciones FAA ("Self Evaluation Completadas"). Cada categoría ("limited category") se contabiliza como <strong>una auditoría ejecutada extraordinaria</strong> en las cifras generales del programa, independientemente de la cantidad de documentos/revisiones individuales que contenga.
+      </div>
+      <div class="qa-kpi-grid cols-3" id="kpiGridFaa"></div>
+      <div class="qa-chart-grid cols-1">
+        <div class="qa-chart-card"><div class="qa-chart-title">Revisiones por Categoría</div><div class="qa-chart-canvas-wrap tall"><canvas id="chartFaaCategorias"></canvas></div></div>
+      </div>
+      <div class="qa-table-card">
+        <div class="qa-table-card-header"><div class="qa-chart-title mb-0">Documentos de Autoevaluación</div></div>
+        <div class="table-responsive"><table id="tblFaaDocs" class="table table-hover qa-table w-100"></table></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="qa-footer no-print">
+    Dashboard QA-OMA · SATENA M.R.O. — Generado localmente, sin conexión a servidores externos.
+  </footer>
+</div>
+
+<!-- Overlay de carga -->
+<div id="loadingOverlay" class="loading-overlay d-none">
+  <div class="loading-box">
+    <div class="spinner-border" role="status"></div>
+    <div id="loadingMsg" class="mt-2">Procesando…</div>
+  </div>
+</div>
+
+<!-- Ventana flotante de detalle al hacer clic en una tarjeta KPI -->
+<div class="modal fade" id="kpiModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="kpiModalLabel">Detalle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover qa-table mb-0">
+            <thead id="kpiModalHead"></thead>
+            <tbody id="kpiModalBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Formulario crear/editar Auditoría -->
+<div class="modal fade" id="auditoriaModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="auditoriaForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="auditoriaModalLabel">Nueva Auditoría</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="afId">
+          <div class="row g-2">
+            <div class="col-md-8"><label class="form-label">Auditado *</label><input class="form-control form-control-sm" id="afAuditado" required></div>
+            <div class="col-md-4"><label class="form-label">Ciudad</label><input class="form-control form-control-sm" id="afCiudad"></div>
+            <div class="col-md-6"><label class="form-label">Clasificación</label><input class="form-control form-control-sm" id="afClasificacionLabel" placeholder="OMA, Proveedor, Laboratorio..."></div>
+            <div class="col-md-6"><label class="form-label">Tipo Amplio</label>
+              <select class="form-select form-select-sm" id="afTipoAmplio">
+                <option value="Proveedor">Proveedor</option>
+                <option value="Área Interna">Área Interna</option>
+                <option value="Inspección">Inspección</option>
+              </select>
+            </div>
+            <div class="col-md-6"><label class="form-label">Modalidad</label><input class="form-control form-control-sm" id="afModalidad" placeholder="Presencial / Remota"></div>
+            <div class="col-md-6"><label class="form-label">Auditor Responsable</label><input class="form-control form-control-sm" id="afAuditorResponsable"></div>
+            <div class="col-md-6"><label class="form-label">Fecha Programada</label><input type="date" class="form-control form-control-sm" id="afFechaProgramada"></div>
+            <div class="col-md-6 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="afEsExtraordinaria">
+                <label class="form-check-label" for="afEsExtraordinaria">Es extraordinaria / No programada</label>
+              </div>
+            </div>
+            <div class="col-md-6" id="afFechaEjecucionRealWrap">
+              <label class="form-label">Fecha Ejecución Real (extraordinarias)</label>
+              <input type="date" class="form-control form-control-sm" id="afFechaEjecucionReal">
+              <div class="form-text">Fecha real en que se ejecutó esta auditoría no programada — se usa en el gráfico mensual en vez de una fecha inferida.</div>
+            </div>
+            <div class="col-md-6"><label class="form-label">Fecha Reprogramación</label><input type="date" class="form-control form-control-sm" id="afFechaReprogramacion"></div>
+            <div class="col-12"><label class="form-label">Estatus Manual (cronograma)</label><input class="form-control form-control-sm" id="afEstatusManualCrono"></div>
+            <div class="col-12"><hr class="my-2"><div class="qa-chart-title mb-1" style="font-size:12px">Evidencia (conteo de archivos por carpeta)</div></div>
+            <div class="col-6 col-md"><label class="form-label small">01_AVI</label><input type="number" min="0" class="form-control form-control-sm" id="afEv01"></div>
+            <div class="col-6 col-md"><label class="form-label small">02_REA</label><input type="number" min="0" class="form-control form-control-sm" id="afEv02"></div>
+            <div class="col-6 col-md"><label class="form-label small">03_SEG</label><input type="number" min="0" class="form-control form-control-sm" id="afEv03"></div>
+            <div class="col-6 col-md"><label class="form-label small">04_CIE</label><input type="number" min="0" class="form-control form-control-sm" id="afEv04"></div>
+            <div class="col-6 col-md"><label class="form-label small">05_EVI</label><input type="number" min="0" class="form-control form-control-sm" id="afEv05"></div>
+            <div class="col-12"><label class="form-label">Notas</label><textarea class="form-control form-control-sm" id="afNotas" rows="2"></textarea></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-danger btn-sm me-auto d-none" id="afBtnDelete">Eliminar</button>
+          <button type="button" class="btn btn-link btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-qa-primary btn-sm">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Formulario crear/editar Hallazgo -->
+<div class="modal fade" id="hallazgoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="hallazgoForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="hallazgoModalLabel">Nuevo Hallazgo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="hfId">
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label">Auditoría vinculada *</label>
+              <select class="form-select form-select-sm" id="hfAuditoriaId" required></select>
+            </div>
+            <div class="col-md-4"><label class="form-label">Tipo</label>
+              <select class="form-select form-select-sm" id="hfCondicion">
+                <option value="NC">No Conformidad</option>
+                <option value="OB">Observación</option>
+                <option value="N/A">Sin hallazgo (cerrada)</option>
+              </select>
+            </div>
+            <div class="col-md-4"><label class="form-label">Estado del Hallazgo</label>
+              <select class="form-select form-select-sm" id="hfEstadoHallazgo">
+                <option value="">—</option>
+                <option value="Abierto">Abierto</option>
+                <option value="Cerrado">Cerrado</option>
+              </select>
+            </div>
+            <div class="col-md-4"><label class="form-label">Auditor Líder</label><input class="form-control form-control-sm" id="hfAuditorLider"></div>
+            <div class="col-md-6"><label class="form-label">Fecha Inicio</label><input type="date" class="form-control form-control-sm" id="hfFechaInicio"></div>
+            <div class="col-md-6"><label class="form-label">Fecha Cierre Reporte</label><input type="date" class="form-control form-control-sm" id="hfFechaCierreReporte"></div>
+            <div class="col-12"><label class="form-label">Causa raíz (clasificación del reporte)</label><input class="form-control form-control-sm" id="hfClasificacionReporte"></div>
+            <div class="col-12"><label class="form-label">Requisito</label><textarea class="form-control form-control-sm" id="hfRequisito" rows="2"></textarea></div>
+            <div class="col-12"><label class="form-label">Descripción *</label><textarea class="form-control form-control-sm" id="hfDescripcion" rows="4" placeholder="Descripción completa del hallazgo..."></textarea></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-danger btn-sm me-auto d-none" id="hfBtnDelete">Eliminar</button>
+          <button type="button" class="btn btn-link btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-qa-primary btn-sm">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== Librerías (100% locales, vendor/) ===================== -->
+<script src="vendor/jquery.min.js"></script>
+<script src="vendor/bootstrap.bundle.min.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/jquery.dataTables.min.js"></script>
+<script src="vendor/dataTables.bootstrap5.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/FileSaver.min.js"></script>
+<script src="vendor/supabase.min.js"></script>
+
+<!-- Credenciales de Supabase: copia js/config.example.js a js/config.js
+     (gitignored) y completa tus valores reales. En GitHub Pages lo genera
+     el workflow de despliegue a partir de Secrets. -->
+<script src="js/config.js"></script>
+
+<!-- ===================== Código de la aplicación ===================== -->
+<script src="data.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/supabaseClient.js"></script>
+<script src="js/dataService.js"></script>
+<script src="js/statusEngine.js"></script>
+<script src="js/kpiEngine.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/tables.js"></script>
+<script src="js/filters.js"></script>
+<script src="js/exportPdf.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

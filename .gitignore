@@ -1,0 +1,9 @@
+# Credenciales locales de Supabase (ver js/config.example.js) — nunca se commitea.
+js/config.js
+
+# Variables de entorno del script de migración (service_role key real).
+.env
+scripts/.env
+
+node_modules/
+.DS_Store
