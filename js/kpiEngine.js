@@ -130,6 +130,29 @@ QA.kpiEngine = (function () {
     };
   }
 
+  /** Misma "meta hoy" que avanceEsperadoVsReal (el cronograma original no
+   * cambia), pero el avance real SUMA las extraordinarias ejecutadas —
+   * mismo criterio que avanceTotalPct en computeKpis. Deja ver si, aunque
+   * las programadas vayan atrasadas, las no programadas ya cerraron (o
+   * superaron) la brecha contra la meta. Puede superar el 100%. */
+  function avanceEsperadoVsRealConNoProgramadas(audits, today) {
+    today = today || new Date();
+    const programadas = audits.filter(a => !a.esExtraordinaria);
+    const extraordinarias = audits.filter(a => a.esExtraordinaria);
+    const total = programadas.length;
+    const deberianEstarHechas = programadas.filter(a => a.fechaProgramada && a.fechaProgramada.getTime() <= today.getTime()).length;
+    const ejecutadasProgramadas = programadas.filter(a => a.estadoCalculado === EST.EJECUTADA).length;
+    const extraordinariasEjecutadas = extraordinarias.filter(a => a.estadoCalculado === EST.EJECUTADA).length;
+    const esperadoPct = total ? (deberianEstarHechas / total) * 100 : 0;
+    const realPct = total ? ((ejecutadasProgramadas + extraordinariasEjecutadas) / total) * 100 : 0;
+    return {
+      total, deberianEstarHechas, ejecutadasProgramadas, extraordinariasEjecutadas,
+      esperadoPct: Math.round(esperadoPct * 10) / 10,
+      realPct: Math.round(realPct * 10) / 10,
+      brechaPct: Math.round((realPct - esperadoPct) * 10) / 10,
+    };
+  }
+
   /* ------------------------------------------------------------------ *
    * Programa: programadas vs ejecutadas por mes (+ extraordinarias)
    * ------------------------------------------------------------------ */
@@ -274,7 +297,7 @@ QA.kpiEngine = (function () {
   }
 
   return {
-    computeKpis, avanceEsperadoVsReal, programaPorMes, auditoriasDeMes,
+    computeKpis, avanceEsperadoVsReal, avanceEsperadoVsRealConNoProgramadas, programaPorMes, auditoriasDeMes,
     porClasificacion, porModalidad, porUbicacion, faaPorCategoria, porTipoRegistro,
     auditoriasPorClasificacionItems, auditoriasPorModalidadItems, auditoriasPorUbicacionItems, faaPorCategoriaItems,
     estadoPrograma, estadoProgramaItems, auditoriasPorCierre, auditoriasPorCierreItems,

@@ -274,14 +274,16 @@
   }
 
   /** Texto bajo el gauge "Brecha de Ejecución": Real / Meta hoy / Brecha,
-   * con color según si va adelantado (verde) o atrasado (rojo) el cronograma. */
-  function renderBrechaResumen(g) {
-    const el = document.getElementById("brechaResumenTexto");
+   * con color según si va adelantado (verde) o atrasado (rojo) el cronograma.
+   * `elId`/`realLabel` parametrizables para reusar el mismo render en el
+   * gauge "con No Programadas" (ver renderEverything). */
+  function renderBrechaResumen(g, elId, realLabel) {
+    const el = document.getElementById(elId || "brechaResumenTexto");
     if (!el) return;
     const ok = g.brechaPct >= 0;
     const brechaTexto = (ok ? "+" : "") + g.brechaPct + " pts";
     el.innerHTML = `
-      <div class="qa-brecha-item"><div class="val">${g.realPct}%</div><div class="lbl">Avance Real</div></div>
+      <div class="qa-brecha-item"><div class="val">${g.realPct}%</div><div class="lbl">${realLabel || "Avance Real"}</div></div>
       <div class="qa-brecha-item"><div class="val">${g.esperadoPct}%</div><div class="lbl">Meta a Hoy</div></div>
       <div class="qa-brecha-item ${ok ? "ok" : "behind"}"><div class="val">${brechaTexto}</div><div class="lbl">Brecha (${ok ? "adelantado" : "atrasado"})</div></div>
     `;
@@ -603,6 +605,7 @@
     QA.charts.renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo,
       buildChartDrilldownHandlers(auditoriasSoloTipo, inspeccionesSoloTipo, findings));
     renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsReal(auditoriasSoloTipo));
+    renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(auditoriasSoloTipo), "brechaResumenTextoTotal", "Avance Real + No Programadas");
     renderSubsectionKpis("kpiGridPrograma", auditoriasSoloTipo);
     renderSubsectionKpis("kpiGridInspecciones", inspeccionesSoloTipo);
     QA.tables.updateAuditoriasTable(auditoriasSoloTipo, openAuditoriaForm);

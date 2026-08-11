@@ -106,11 +106,16 @@
       <div class="qa-resumen-columns">
         <div class="qa-resumen-col-kpis" id="kpiGridResumen"></div>
         <div class="qa-resumen-col-charts">
-          <div class="qa-chart-grid cols-1">
+          <div class="qa-chart-grid cols-2">
             <div class="qa-chart-card">
               <div class="qa-chart-title">Brecha de Ejecución — Corte a Hoy</div>
               <div class="qa-chart-canvas-wrap" style="height:110px"><canvas id="chartAvanceGauge"></canvas></div>
               <div id="brechaResumenTexto" class="qa-brecha-texto"></div>
+            </div>
+            <div class="qa-chart-card">
+              <div class="qa-chart-title">Brecha con No Programadas — Corte a Hoy</div>
+              <div class="qa-chart-canvas-wrap" style="height:110px"><canvas id="chartAvanceGaugeTotal"></canvas></div>
+              <div id="brechaResumenTextoTotal" class="qa-brecha-texto"></div>
             </div>
           </div>
           <div class="qa-chart-grid cols-2">

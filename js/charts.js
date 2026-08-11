@@ -148,13 +148,14 @@ QA.charts = (function () {
     };
   }
 
-  function renderAvanceGauge(d) {
-    const canvas = document.getElementById("chartAvanceGauge");
+  function renderAvanceGauge(d, canvasId) {
+    canvasId = canvasId || "chartAvanceGauge";
+    const canvas = document.getElementById(canvasId);
     if (!canvas) return;
-    if (instances.chartAvanceGauge) instances.chartAvanceGauge.destroy();
+    if (instances[canvasId]) instances[canvasId].destroy();
     const color = d.realPct >= d.esperadoPct ? PALETTE.verde : PALETTE.rojo;
     const scaleMax = Math.max(100, d.realPct, d.esperadoPct);
-    instances.chartAvanceGauge = new Chart(canvas.getContext("2d"), {
+    instances[canvasId] = new Chart(canvas.getContext("2d"), {
       type: "bar",
       data: { labels: ["Avance"], datasets: [{ data: [d.realPct], backgroundColor: color, borderRadius: 6, barThickness: 40 }] },
       options: {
@@ -301,6 +302,7 @@ QA.charts = (function () {
     // Resumen Ejecutivo: SOLO Auditorías (tipoRegistro AUDITORIA) — las
     // Inspecciones no deben sumar aquí, tienen su propio resumen aparte.
     renderAvanceGauge(QA.kpiEngine.avanceEsperadoVsReal(auditoriasSoloTipo));
+    renderAvanceGauge(QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(auditoriasSoloTipo), "chartAvanceGaugeTotal");
     renderProgramaPorMes(QA.kpiEngine.programaPorMes(auditoriasSoloTipo), handlers.onProgramaMes);
     renderEstadoPrograma(QA.kpiEngine.estadoPrograma(auditoriasSoloTipo), handlers.onEstadoPrograma);
     renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(auditoriasSoloTipo), handlers.onAuditoriasPorCierre);
