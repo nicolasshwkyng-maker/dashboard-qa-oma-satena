@@ -21,6 +21,14 @@ QA.kpiEngine = (function () {
    * Cierre Parcial) — ya no hace falta caer al estado de la auditoría. */
   function estadoEfectivo(f) { return f.estadoHallazgo || null; }
 
+  /** scripts/apply-cierre-manual.mjs inserta hallazgos con condicion "N/A"
+   * como marcador de cierre cuando una auditoría ejecutada no tenía NC/OB
+   * registrados — solo existen para que statusEngine calcule el rollup de
+   * cierre de esa auditoría (ver statusEngine#computeAuditoriaRollup). No
+   * son hallazgos reales (la hoja HALLAZGOS_2026 nunca trae "N/A" en esa
+   * columna) y deben quedar fuera de todo conteo/gráfico de hallazgos. */
+  function hallazgosReales(findings) { return findings.filter(f => f.condicion !== "N/A"); }
+
   /* ------------------------------------------------------------------ *
    * Separar Auditorías de Inspecciones (columna "Tipo" del Excel 2026)
    * ------------------------------------------------------------------ */
@@ -31,6 +39,7 @@ QA.kpiEngine = (function () {
    * ------------------------------------------------------------------ */
   function computeKpis(audits, findings, today) {
     today = today || new Date();
+    findings = hallazgosReales(findings);
     const programadas = audits.filter(a => !a.esExtraordinaria);
     const extraordinarias = audits.filter(a => a.esExtraordinaria);
     const ejecutadas = audits.filter(a => a.estadoCalculado === EST.EJECUTADA);
@@ -228,19 +237,20 @@ QA.kpiEngine = (function () {
    * Hallazgos
    * ------------------------------------------------------------------ */
   function hallazgosPorEstado(findings) {
-    return countBy(findings, f => estadoEfectivo(f));
+    return countBy(hallazgosReales(findings), f => estadoEfectivo(f));
   }
-  function hallazgosPorEstadoItems(findings, label) { return itemsWhere(findings, estadoEfectivo, label); }
+  function hallazgosPorEstadoItems(findings, label) { return itemsWhere(hallazgosReales(findings), estadoEfectivo, label); }
   function hallazgosPorClasificacion(findings) {
-    return countBy(findings, keyHallazgoClasificacion);
+    return countBy(hallazgosReales(findings), keyHallazgoClasificacion);
   }
-  function hallazgosPorClasificacionItems(findings, label) { return itemsWhere(findings, keyHallazgoClasificacion, label); }
+  function hallazgosPorClasificacionItems(findings, label) { return itemsWhere(hallazgosReales(findings), keyHallazgoClasificacion, label); }
   function hallazgosPorProceso(findings) {
-    return countBy(findings, keyHallazgoProceso);
+    return countBy(hallazgosReales(findings), keyHallazgoProceso);
   }
-  function hallazgosPorProcesoItems(findings, label) { return itemsWhere(findings, keyHallazgoProceso, label); }
+  function hallazgosPorProcesoItems(findings, label) { return itemsWhere(hallazgosReales(findings), keyHallazgoProceso, label); }
   /** Emitidos (por fecha de notificación) vs cerrados (por fecha de cierre de reporte), por mes. */
   function hallazgosTendenciaMensual(findings) {
+    findings = hallazgosReales(findings);
     const buckets = Array.from({ length: 12 }, () => ({ emitidos: 0, cerrados: 0 }));
     findings.forEach((f) => {
       const emitDate = f.fechaNotificacion || f.fechaInicio;
@@ -251,6 +261,7 @@ QA.kpiEngine = (function () {
   }
   /** `serie` ∈ "emitidos" | "cerrados" — drill-down del gráfico de tendencia mensual. */
   function hallazgosTendenciaItems(findings, monthIndex, serie) {
+    findings = hallazgosReales(findings);
     if (serie === "cerrados") return findings.filter(f => f.fechaCierreReporte && f.fechaCierreReporte.getMonth() === monthIndex);
     return findings.filter((f) => {
       const d = f.fechaNotificacion || f.fechaInicio;
@@ -258,6 +269,7 @@ QA.kpiEngine = (function () {
     });
   }
   function hallazgosEmitidosVsCerrados(findings) {
+    findings = hallazgosReales(findings);
     return { emitidos: findings.length, cerrados: findings.filter(f => estadoEfectivo(f) === "Cerrado").length };
   }
 
@@ -266,6 +278,7 @@ QA.kpiEngine = (function () {
     porClasificacion, porModalidad, porUbicacion, faaPorCategoria, porTipoRegistro,
     auditoriasPorClasificacionItems, auditoriasPorModalidadItems, auditoriasPorUbicacionItems, faaPorCategoriaItems,
     estadoPrograma, estadoProgramaItems, auditoriasPorCierre, auditoriasPorCierreItems,
+    hallazgosReales,
     hallazgosPorEstado, hallazgosPorEstadoItems, hallazgosPorClasificacion, hallazgosPorClasificacionItems,
     hallazgosPorProceso, hallazgosPorProcesoItems, hallazgosTendenciaMensual, hallazgosTendenciaItems,
     hallazgosEmitidosVsCerrados,

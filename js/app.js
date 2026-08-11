@@ -607,7 +607,10 @@
     renderSubsectionKpis("kpiGridInspecciones", inspeccionesSoloTipo);
     QA.tables.updateAuditoriasTable(auditoriasSoloTipo, openAuditoriaForm);
     QA.tables.updateInspeccionesTable(inspeccionesSoloTipo, (a) => openAuditoriaForm(a, "INSPECCION"));
-    QA.tables.updateHallazgosTable(findings, openHallazgoForm);
+    // Excluye los hallazgos "N/A" (marcadores de cierre manual, ver
+    // kpiEngine#hallazgosReales) de la tabla — no son hallazgos reales, solo
+    // se usan para el rollup de cierre de la auditoría.
+    QA.tables.updateHallazgosTable(QA.kpiEngine.hallazgosReales(findings), openHallazgoForm);
     renderFaaPanel();
     QA.charts.resizeAll();
   }
