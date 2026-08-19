@@ -12,32 +12,17 @@
 <body>
 
 <!-- ==================================================================
-     PANTALLA DE INICIO DE SESIÓN
-     Los datos ahora viven en Supabase (Postgres en la nube), no en archivos
-     locales — se muestra esta pantalla hasta que haya una sesión válida de
-     Supabase Auth. Sin sesión, Row Level Security bloquea toda lectura y
-     escritura (ver supabase/schema.sql), así que no hay forma de ver datos
-     sin iniciar sesión primero.
+     PANTALLA DE ERROR DE CONFIGURACIÓN
+     El acceso a la app es público (sin login, ver supabase/schema_open_access.sql).
+     Esta pantalla solo se muestra si falta o está mal configurado js/config.js
+     (ver js/supabaseClient.js) — en operación normal queda oculta y se
+     muestra #appRoot directo.
      ================================================================== -->
 <div id="setupScreen" class="setup-screen">
   <div class="setup-card">
     <h1>Dashboard QA-OMA</h1>
     <p class="setup-sub">Programa Anual de Auditorías de Aseguramiento de la Calidad — SATENA M.R.O.</p>
-
     <div id="setupAlertBox"></div>
-
-    <form id="loginForm" autocomplete="on">
-      <div class="mb-2 text-start">
-        <label class="form-label" for="loginEmail">Correo</label>
-        <input type="email" class="form-control" id="loginEmail" autocomplete="username" required>
-      </div>
-      <div class="mb-2 text-start">
-        <label class="form-label" for="loginPassword">Contraseña</label>
-        <input type="password" class="form-control" id="loginPassword" autocomplete="current-password" required>
-      </div>
-      <button type="submit" class="btn btn-qa-primary w-100 mt-2" id="btnLogin">Iniciar sesión</button>
-    </form>
-    <p class="setup-footnote">Acceso restringido al equipo QA-OMA. Los datos se leen y escriben directamente contra Supabase con Row Level Security — nadie sin sesión iniciada puede ver ni modificar información.</p>
   </div>
 </div>
 
@@ -58,7 +43,6 @@
       <button class="btn btn-header-action" id="btnRefreshData" title="Volver a pedir los datos a Supabase">↻ Actualizar datos</button>
       <button class="btn btn-header-action" id="btnPrint" title="Imprimir la vista actual">🖶 Imprimir</button>
       <button class="btn btn-header-action" id="btnExportPdf" title="Exportar todo el dashboard a PDF">⭳ Exportar PDF</button>
-      <button class="btn btn-header-action" id="btnLogout" title="Cerrar sesión">⏻ Cerrar sesión</button>
     </div>
   </header>
 

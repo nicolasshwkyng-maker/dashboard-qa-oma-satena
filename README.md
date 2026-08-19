@@ -20,22 +20,20 @@ Excel cada vez.
 
 - **Frontend**: HTML/CSS/JS plano (sin build step), Bootstrap 5, Chart.js,
   DataTables — servido como sitio estático desde GitHub Pages.
-- **Backend**: Supabase (Postgres + Auth + Realtime). El navegador habla
-  directo con Supabase (`vendor/supabase.min.js`), sin servidor propio.
-  Row Level Security exige sesión iniciada para leer o escribir cualquier
-  tabla (ver `supabase/schema.sql`).
-- **Auth**: Supabase Auth, email/contraseña. Un único usuario autorizado
-  por ahora (se crea a mano desde el Dashboard de Supabase, no hay
-  registro público).
+- **Backend**: Supabase (Postgres + Realtime). El navegador habla directo
+  con Supabase (`vendor/supabase.min.js`), sin servidor propio.
+- **Acceso**: público, sin login — cualquiera con el enlace puede ver y
+  editar (ver `supabase/schema_open_access.sql`). No hay pantalla de
+  inicio de sesión ni usuarios de Supabase Auth en uso.
 
 ## Puesta en marcha (una sola vez)
 
 1. **Crear el proyecto Supabase**: [supabase.com](https://supabase.com) →
-   New Project. En **Authentication → Providers**, deja solo Email y
-   **desactiva "Enable email signups"** (el único usuario se crea a mano en
-   Authentication → Users → Add user — así nadie más puede auto-registrarse).
+   New Project.
 2. **Crear el esquema**: pega el contenido de `supabase/schema.sql` en el
-   SQL Editor del proyecto y ejecútalo.
+   SQL Editor del proyecto y ejecútalo, y a continuación
+   `supabase/schema_open_access.sql` (deja las tablas de lectura/escritura
+   pública, sin exigir sesión iniciada).
 3. **Configurar el frontend**: copia `js/config.example.js` a `js/config.js`
    y completa `SUPABASE_URL` / `SUPABASE_ANON_KEY` (Project Settings → API
    → la *anon public key*, no la *service_role*). `js/config.js` está en
@@ -45,8 +43,7 @@ Excel cada vez.
    copia `scripts/.env.example` a `scripts/.env`, complétalo, y corre
    `node scripts/migrate-to-supabase.mjs`. Solo hace falta una vez.
 5. **Abrir la app**: `index.html` directamente en el navegador (o servido
-   por cualquier servidor estático) — pedirá iniciar sesión con el usuario
-   creado en el paso 1.
+   por cualquier servidor estático) — se ve el dashboard directo, sin login.
 6. **Desplegar a GitHub Pages**: ver `.github/workflows/deploy.yml` —
    agrega los secrets `SUPABASE_URL` y `SUPABASE_ANON_KEY` en Settings →
    Secrets and variables → Actions, activa Pages con "Source: GitHub
@@ -62,7 +59,8 @@ SATENA_QA_Dashboard/
 ├── README.md                     Este archivo
 ├── .gitignore                     js/config.js y scripts/.env nunca se commitean
 ├── supabase/
-│   └── schema.sql                  Tablas + Row Level Security (correr una vez en Supabase)
+│   ├── schema.sql                  Tablas + Row Level Security (correr una vez en Supabase)
+│   └── schema_open_access.sql       Abre las políticas RLS a acceso público (sin login)
 ├── scripts/
 │   ├── migrate-to-supabase.mjs      Migración única Excel/carpetas -> Supabase (Node)
 │   └── .env.example                  Plantilla de variables para el script de migración
@@ -78,14 +76,14 @@ SATENA_QA_Dashboard/
     ├── config.example.js       Plantilla de credenciales Supabase (copiar a config.js)
     ├── utils.js                  Normalización de texto, fechas, formato — funciones puras
     ├── supabaseClient.js           Inicialización del cliente Supabase
-    ├── dataService.js                Fuente de datos: fetch/save/delete + Realtime + Auth
+    ├── dataService.js                Fuente de datos: fetch/save/delete + Realtime
     ├── statusEngine.js                 Cálculo del estado real de cada auditoría
     ├── kpiEngine.js                      Cálculo de KPIs y agregaciones para gráficos
     ├── charts.js                          Renderizado de todos los gráficos (Chart.js)
     ├── tables.js                            Tablas dinámicas (DataTables) + export a Excel
     ├── filters.js                            Filtros globales
     ├── exportPdf.js                           Exportación del dashboard a PDF
-    └── app.js                                  Orquestación: login, carga, edición, render
+    └── app.js                                  Orquestación: carga, edición, render
 ```
 
 Los archivos retirados de `index.html` (`fileAccess.js`, `excelParser.js`,
@@ -139,7 +137,8 @@ auditoría cuando se confirme la fecha real.
   "+ Nueva Auditoría" del dashboard — no requiere tocar código ni Excel.
 - **Cambiar la regla de "ejecutada"**: editar únicamente
   `js/statusEngine.js` (función `computeEstado`).
-- **Agregar más usuarios**: Authentication → Users → Add user en Supabase.
-  Las políticas de `supabase/schema.sql` hoy permiten a cualquier usuario
-  autenticado leer/escribir todo; si se necesitan roles distintos, ese es
-  el lugar para restringir por `auth.uid()` específico.
+- **Volver a exigir login**: el acceso hoy es público (políticas RLS
+  `using (true)` en `supabase/schema_open_access.sql`). Para restringir de
+  nuevo, vuelve a aplicar `supabase/schema.sql` (políticas
+  `auth.uid() is not null`) y restaura la pantalla de login en `index.html`
+  / `js/app.js` (ver historial de git antes de este cambio).

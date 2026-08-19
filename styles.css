@@ -83,7 +83,6 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .setup-step-title { font-size: 13px; font-weight: 600; color: var(--gris); }
 .setup-step-desc { font-size: 11.5px; color: var(--gris-m); margin: 2px 0 8px; line-height: 1.4; }
 .setup-step-status { display: inline-block; margin-left: 10px; font-size: 11.5px; color: var(--gris-m); }
-.setup-footnote { font-size: 11px; color: var(--gris-m); text-align: center; margin-top: 16px; line-height: 1.5; }
 
 .btn-qa-primary { background: var(--azul); border-color: var(--azul); color: #fff; font-weight: 500; }
 .btn-qa-primary:hover:not(:disabled) { background: var(--azul-m); border-color: var(--azul-m); color: #fff; }

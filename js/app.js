@@ -1,11 +1,12 @@
 /**
  * js/app.js — Orquestación de la aplicación
  * ============================================================================
- * Punto de entrada. Conecta la pantalla de login (Supabase Auth), carga los
- * datos desde Supabase (js/dataService.js), conecta los filtros globales con
- * gráficos y tablas, y wire-ea los formularios de edición de Auditoría y
- * Hallazgo. Cualquier cambio (desde esta pestaña u otra sesión) llega vía
- * Realtime y dispara un refresco automático de KPIs/gráficas/tablas.
+ * Punto de entrada. Carga los datos desde Supabase (js/dataService.js) —sin
+ * login, el acceso es público (ver supabase/schema_open_access.sql)—, conecta
+ * los filtros globales con gráficos y tablas, y wire-ea los formularios de
+ * edición de Auditoría y Hallazgo. Cualquier cambio (desde esta pestaña u
+ * otra sesión) llega vía Realtime y dispara un refresco automático de
+ * KPIs/gráficas/tablas.
  *
  * Pipeline de carga:
  *   1. dataService.fetchAuditorias / fetchHallazgos / fetchFaaDocumentos
@@ -44,10 +45,6 @@
     document.getElementById("setupScreen").classList.add("d-none");
     document.getElementById("appRoot").classList.remove("d-none");
   }
-  function showLoginScreen() {
-    document.getElementById("appRoot").classList.add("d-none");
-    document.getElementById("setupScreen").classList.remove("d-none");
-  }
 
   /** "YYYY-MM-DD" para <input type="date">, en componentes locales (evita
    * corrimientos de zona horaria que puede introducir toISOString()). */
@@ -61,34 +58,6 @@
   function dateFromInput(id) {
     const v = document.getElementById(id).value;
     return v ? new Date(v + "T00:00:00") : null;
-  }
-
-  /* ------------------------------------------------------------------ *
-   * Login / logout (Supabase Auth)
-   * ------------------------------------------------------------------ */
-  function wireLoginScreen() {
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      clearSetupAlert();
-      const email = document.getElementById("loginEmail").value.trim();
-      const password = document.getElementById("loginPassword").value;
-      const btn = document.getElementById("btnLogin");
-      btn.disabled = true;
-      try {
-        await QA.dataService.signIn(email, password);
-        // El listener de onAuthChange se encarga de mostrar la app.
-      } catch (err) {
-        showSetupAlert("No se pudo iniciar sesión: " + (err && err.message ? err.message : err), "danger");
-      } finally {
-        btn.disabled = false;
-      }
-    });
-  }
-
-  function wireLogout() {
-    document.getElementById("btnLogout").addEventListener("click", async () => {
-      await QA.dataService.signOut();
-    });
   }
 
   /* ------------------------------------------------------------------ *
@@ -147,17 +116,11 @@
 
   const debouncedReload = u.debounce(() => { if (state.loaded) loadAndRenderAll(); }, 400);
 
-  async function handleAuthedSession() {
+  async function startApp() {
     showAppScreen();
     clearSetupAlert();
     await loadAndRenderAll();
     if (!stopRealtime) stopRealtime = QA.dataService.subscribeToChanges(debouncedReload);
-  }
-
-  function handleSignedOut() {
-    if (stopRealtime) { stopRealtime(); stopRealtime = null; }
-    state.loaded = false;
-    showLoginScreen();
   }
 
   /* ------------------------------------------------------------------ *
@@ -664,12 +627,9 @@
   document.addEventListener("DOMContentLoaded", async () => {
     if (!QA.supabaseClient) {
       showSetupAlert(QA.supabaseConfigError || "Cliente Supabase no configurado.", "danger");
-      document.getElementById("loginForm").classList.add("d-none");
       return;
     }
 
-    wireLoginScreen();
-    wireLogout();
     wireFilters();
     wireNav();
     wireHeaderActions();
@@ -677,9 +637,6 @@
     wireAuditoriaForm();
     wireHallazgoForm();
 
-    QA.dataService.onAuthChange((event, session) => {
-      if (event === "SIGNED_OUT") { handleSignedOut(); return; }
-      if (session) handleAuthedSession(); else handleSignedOut();
-    });
+    await startApp();
   });
 })();

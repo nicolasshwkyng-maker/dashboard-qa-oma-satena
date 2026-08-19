@@ -3,7 +3,6 @@
  * ============================================================================
  * Reemplaza a fileAccess.js + excelParser.js + folderScanner.js + matching.js
  * como origen de los datos. Expone:
- *   - Auth: signIn, signOut, getSession, onAuthChange
  *   - Lectura: fetchAuditorias, fetchHallazgos
  *   - Escritura: saveAuditoria, deleteAuditoria, saveHallazgo, deleteHallazgo
  *   - Tiempo real: subscribeToChanges(callback) — dispara callback() ante
@@ -24,27 +23,6 @@ QA.dataService = (function () {
   function requireClient() {
     if (!sb()) throw new Error(QA.supabaseConfigError || "Cliente Supabase no inicializado.");
     return sb();
-  }
-
-  /* ------------------------------------------------------------------ *
-   * Auth
-   * ------------------------------------------------------------------ */
-  async function signIn(email, password) {
-    const { data, error } = await requireClient().auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data.session;
-  }
-  async function signOut() {
-    await requireClient().auth.signOut();
-  }
-  async function getSession() {
-    const { data } = await requireClient().auth.getSession();
-    return data.session;
-  }
-  /** callback(event, session) — event es "SIGNED_IN" | "SIGNED_OUT" |
-   * "INITIAL_SESSION" | "TOKEN_REFRESHED" | ... (ver docs de Supabase Auth). */
-  function onAuthChange(callback) {
-    requireClient().auth.onAuthStateChange((event, session) => callback(event, session));
   }
 
   /* ------------------------------------------------------------------ *
@@ -297,7 +275,6 @@ QA.dataService = (function () {
   }
 
   return {
-    signIn, signOut, getSession, onAuthChange,
     fetchAuditorias, saveAuditoria, deleteAuditoria,
     fetchHallazgos, saveHallazgo, deleteHallazgo,
     fetchFaaDocumentos,

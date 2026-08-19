@@ -21,7 +21,5 @@ QA.supabaseClient = (function () {
     QA.supabaseConfigError = "js/config.js todavía tiene los valores de ejemplo. Reemplázalos por los de tu proyecto Supabase (Project Settings > API).";
     return null;
   }
-  return window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true },
-  });
+  return window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
 })();
