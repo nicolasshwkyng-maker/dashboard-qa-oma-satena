@@ -1,19 +1,17 @@
 /**
  * js/app.js — Orquestación de la aplicación
  * ============================================================================
- * Punto de entrada. Carga los datos desde Supabase (js/dataService.js) —sin
- * login, el acceso es público (ver supabase/schema_open_access.sql)—, conecta
- * los filtros globales con gráficos y tablas, y wire-ea los formularios de
- * edición de Auditoría y Hallazgo. Cualquier cambio (desde esta pestaña u
- * otra sesión) llega vía Realtime y dispara un refresco automático de
- * KPIs/gráficas/tablas.
+ * Punto de entrada. Carga los datos desde IndexedDB (js/dataService.js) —sin
+ * backend, sin login—, conecta los filtros globales con gráficos y tablas, y
+ * wire-ea los formularios de edición de Auditoría y Hallazgo, además del
+ * flujo de carga de Excel (js/excelImport.js). Un cambio hecho en OTRA
+ * pestaña de este mismo navegador llega vía BroadcastChannel y dispara un
+ * refresco automático de KPIs/gráficas/tablas.
  *
  * Pipeline de carga:
  *   1. dataService.fetchAuditorias / fetchHallazgos / fetchFaaDocumentos
  *   2. statusEngine.applyAll -> calcula el estado real de cada auditoría
  *   3. attachFindingsToAudits -> agrega conteos de hallazgos por auditoría
- *      (el vínculo mismo ya es un FK real en la base de datos, no una
- *      adivinanza por nombre como en la versión basada en Excel/carpetas)
  *   4. kpiEngine + charts + tables -> se pintan con los datos ya filtrados
  */
 
@@ -44,6 +42,10 @@
   function showAppScreen() {
     document.getElementById("setupScreen").classList.add("d-none");
     document.getElementById("appRoot").classList.remove("d-none");
+  }
+  function showEmptyDataScreen() {
+    document.getElementById("appRoot").classList.add("d-none");
+    document.getElementById("setupScreen").classList.remove("d-none");
   }
 
   /** "YYYY-MM-DD" para <input type="date">, en componentes locales (evita
@@ -86,9 +88,17 @@
     });
   }
 
+  async function renderLastImportLabel() {
+    const meta = await QA.dataService.getLastImportMeta();
+    const el = document.getElementById("lblUltimaActualizacion");
+    if (!meta) { el.textContent = ""; return; }
+    const fecha = new Date(meta.importedAt).toLocaleString("es-CO");
+    el.textContent = `Datos cargados el ${fecha}` + (meta.fileName ? ` desde "${meta.fileName}"` : "");
+  }
+
   async function loadAndRenderAll() {
     try {
-      showLoading("Cargando auditorías, hallazgos y documentos FAA…");
+      showLoading("Leyendo auditorías, hallazgos y documentos FAA…");
       const [audits, findings, faaDocs] = await Promise.all([
         QA.dataService.fetchAuditorias(), QA.dataService.fetchHallazgos(), QA.dataService.fetchFaaDocumentos(),
       ]);
@@ -105,18 +115,22 @@
       populateFilterOptions();
       renderEverything();
 
-      document.getElementById("lblUltimaActualizacion").textContent = "Actualizado: " + new Date().toLocaleString("es-CO");
+      await renderLastImportLabel();
       hideLoading();
     } catch (e) {
       hideLoading();
       console.error(e);
-      alert("No se pudieron cargar los datos desde Supabase: " + (e && e.message ? e.message : e));
+      alert("No se pudieron leer los datos guardados en este navegador: " + (e && e.message ? e.message : e));
     }
   }
 
   const debouncedReload = u.debounce(() => { if (state.loaded) loadAndRenderAll(); }, 400);
 
+  /** Muestra la app o la pantalla "sin datos todavía" según si ya hay algo
+   * cargado en IndexedDB — reemplaza al antiguo chequeo de sesión Supabase. */
   async function startApp() {
+    const audits = await QA.dataService.fetchAuditorias();
+    if (!audits.length) { showEmptyDataScreen(); return; }
     showAppScreen();
     clearSetupAlert();
     await loadAndRenderAll();
@@ -597,10 +611,50 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * Acciones de cabecera: actualizar, imprimir, exportar PDF, nuevos registros
+   * Carga de Excel: botón en el header y en la pantalla "sin datos" abren
+   * el mismo <input type="file"> oculto; siempre REEMPLAZA todo lo que
+   * había (el Excel es la fuente de verdad de cada carga, igual que en el
+   * modelo original de archivo local — ver js/excelImport.js).
+   * ------------------------------------------------------------------ */
+  function wireExcelImport() {
+    const input = document.getElementById("excelFileInput");
+    const openPicker = () => input.click();
+    document.getElementById("btnCargarExcel").addEventListener("click", openPicker);
+    document.getElementById("btnCargarExcelSetup").addEventListener("click", openPicker);
+
+    input.addEventListener("change", async () => {
+      const file = input.files[0];
+      input.value = ""; // permite volver a elegir el mismo archivo más adelante
+      if (!file) return;
+
+      const hayDatos = state.loaded && state.allAudits.length > 0;
+      if (hayDatos && !confirm(`Vas a reemplazar TODOS los datos actuales con "${file.name}". Esta acción no se puede deshacer. ¿Continuar?`)) return;
+
+      showLoading("Leyendo el Excel…");
+      clearSetupAlert();
+      try {
+        const { audits, findings, resumen } = await QA.excelImport.importFromExcel(file);
+        await QA.dataService.replaceAllFromExcel(audits, findings, { fileName: file.name, importedAt: new Date().toISOString() });
+        await startApp();
+        let msg = `Carga completa: ${resumen.auditorias} auditorías, ${resumen.inspecciones} inspecciones, ${resumen.hallazgos} hallazgos (${resumen.hallazgosVinculados} vinculados a una auditoría).`;
+        if (resumen.hallazgosSinVincular) {
+          msg += `\n\n${resumen.hallazgosSinVincular} hallazgo(s) no se pudieron vincular a ninguna auditoría por similitud de nombre — revisa la columna "Auditado" de HALLAZGOS_2026 si esperabas verlos vinculados.`;
+        }
+        alert(msg);
+      } catch (e) {
+        console.error(e);
+        const msg = "No se pudo cargar el Excel: " + (e && e.message ? e.message : e);
+        if (hayDatos) alert(msg); else showSetupAlert(msg, "danger");
+      } finally {
+        hideLoading();
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Acciones de cabecera: imprimir, exportar PDF, nuevos registros
    * ------------------------------------------------------------------ */
   function wireHeaderActions() {
-    document.getElementById("btnRefreshData").addEventListener("click", loadAndRenderAll);
     document.getElementById("btnPrint").addEventListener("click", () => QA.exportPdf.print());
     document.getElementById("btnExportPdf").addEventListener("click", async () => {
       showLoading("Generando PDF…");
@@ -625,13 +679,9 @@
    * Arranque
    * ------------------------------------------------------------------ */
   document.addEventListener("DOMContentLoaded", async () => {
-    if (!QA.supabaseClient) {
-      showSetupAlert(QA.supabaseConfigError || "Cliente Supabase no configurado.", "danger");
-      return;
-    }
-
     wireFilters();
     wireNav();
+    wireExcelImport();
     wireHeaderActions();
     wireKpiModals();
     wireAuditoriaForm();

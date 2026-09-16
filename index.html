@@ -12,17 +12,18 @@
 <body>
 
 <!-- ==================================================================
-     PANTALLA DE ERROR DE CONFIGURACIÓN
-     El acceso a la app es público (sin login, ver supabase/schema_open_access.sql).
-     Esta pantalla solo se muestra si falta o está mal configurado js/config.js
-     (ver js/supabaseClient.js) — en operación normal queda oculta y se
-     muestra #appRoot directo.
+     PANTALLA "SIN DATOS TODAVÍA"
+     Sin backend: los datos viven en IndexedDB, en este mismo navegador (ver
+     js/dataService.js). Esta pantalla se muestra mientras no haya nada
+     cargado — el punto de partida es subir el Excel de control.
      ================================================================== -->
 <div id="setupScreen" class="setup-screen">
   <div class="setup-card">
     <h1>Dashboard QA-OMA</h1>
     <p class="setup-sub">Programa Anual de Auditorías de Aseguramiento de la Calidad — SATENA M.R.O.</p>
     <div id="setupAlertBox"></div>
+    <p class="setup-sub" style="margin-top:16px;">Carga el Excel de control (hojas <strong>AUDITORIAS_2026</strong> y <strong>HALLAZGOS_2026</strong>) para comenzar. Los datos quedan guardados en este navegador — no se suben a ningún servidor.</p>
+    <button type="button" class="btn btn-qa-primary w-100 mt-2" id="btnCargarExcelSetup">📂 Cargar Excel</button>
   </div>
 </div>
 
@@ -40,7 +41,7 @@
     </div>
     <div class="qa-header-actions">
       <span class="qa-header-updated" id="lblUltimaActualizacion"></span>
-      <button class="btn btn-header-action" id="btnRefreshData" title="Volver a pedir los datos a Supabase">↻ Actualizar datos</button>
+      <button class="btn btn-header-action" id="btnCargarExcel" title="Cargar un Excel de control nuevo (reemplaza todos los datos actuales)">📂 Cargar Excel</button>
       <button class="btn btn-header-action" id="btnPrint" title="Imprimir la vista actual">🖶 Imprimir</button>
       <button class="btn btn-header-action" id="btnExportPdf" title="Exportar todo el dashboard a PDF">⭳ Exportar PDF</button>
     </div>
@@ -199,6 +200,12 @@
   </footer>
 </div>
 
+<!-- A nivel de body (no dentro de #setupScreen ni #appRoot) para que
+     .click() lo abra sin problema sin importar cuál de las 2 pantallas
+     esté visible — un input dentro de un ancestro display:none no siempre
+     dispara el diálogo del sistema operativo. -->
+<input type="file" id="excelFileInput" accept=".xlsx" class="d-none">
+
 <!-- Overlay de carga -->
 <div id="loadingOverlay" class="loading-overlay d-none">
   <div class="loading-box">
@@ -342,17 +349,13 @@
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/html2canvas.min.js"></script>
 <script src="vendor/FileSaver.min.js"></script>
-<script src="vendor/supabase.min.js"></script>
-
-<!-- Credenciales de Supabase: copia js/config.example.js a js/config.js
-     (gitignored) y completa tus valores reales. En GitHub Pages lo genera
-     el workflow de despliegue a partir de Secrets. -->
-<script src="js/config.js"></script>
 
 <!-- ===================== Código de la aplicación ===================== -->
 <script src="data.js"></script>
 <script src="js/utils.js"></script>
-<script src="js/supabaseClient.js"></script>
+<script src="js/excelParser.js"></script>
+<script src="js/matching.js"></script>
+<script src="js/excelImport.js"></script>
 <script src="js/dataService.js"></script>
 <script src="js/statusEngine.js"></script>
 <script src="js/kpiEngine.js"></script>

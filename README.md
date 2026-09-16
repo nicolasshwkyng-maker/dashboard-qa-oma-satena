@@ -1,53 +1,51 @@
 # Dashboard QA-OMA — SATENA M.R.O.
 
-Aplicación web para visualizar y **editar en vivo** el estado de ejecución
-real del Programa Anual de Auditorías de Aseguramiento de la Calidad de la
-OMA SATENA. Los datos viven en **Supabase** (Postgres en la nube) y se
-despliega como sitio estático en **GitHub Pages**: cualquier edición desde
-el dashboard (o desde otra sesión) se refleja en vivo en KPIs, gráficas y
-tablas vía Supabase Realtime, sin depender de volver a cargar archivos
-Excel cada vez.
+Aplicación web para visualizar el estado de ejecución del Programa Anual de
+Auditorías de Aseguramiento de la Calidad de la OMA SATENA. **Sin backend,
+sin login, sin credenciales**: los datos se cargan subiendo el Excel de
+control (hojas `AUDITORIAS_2026` + `HALLAZGOS_2026`) y quedan guardados en
+el navegador de quien la abre (IndexedDB). Para actualizarla, se vuelve a
+cargar el Excel — reemplaza todo lo que había, igual que la primera versión
+de la app (100% local, sin backend), pero ahora desplegada en la web.
 
-> Versión anterior: hasta agosto de 2026 la app era 100% local (sin
-> backend) y leía un cronograma y una carpeta de evidencias directamente
-> del disco cada vez que se abría, vía la File System Access API del
-> navegador. Ese modelo se retiró — ver `git log` para el historial — pero
-> su lógica de negocio (cruce cronograma↔evidencia, reglas de
-> clasificación) se conserva y se reutiliza en el script de migración
-> única (`scripts/migrate-to-supabase.mjs`).
+> Historial: la app pasó por una versión intermedia con Supabase (Postgres
+> en la nube, login, edición en vivo multi-dispositivo) entre agosto y
+> septiembre de 2026. Se retiró — ver `git log` — porque requería mantener
+> un proyecto Supabase aparte; el modelo actual vuelve a "el Excel es la
+> fuente de verdad", adaptado para funcionar desplegado en la web.
 
 ## Arquitectura
 
 - **Frontend**: HTML/CSS/JS plano (sin build step), Bootstrap 5, Chart.js,
-  DataTables — servido como sitio estático desde GitHub Pages.
-- **Backend**: Supabase (Postgres + Realtime). El navegador habla directo
-  con Supabase (`vendor/supabase.min.js`), sin servidor propio.
-- **Acceso**: público, sin login — cualquiera con el enlace puede ver y
-  editar (ver `supabase/schema_open_access.sql`). No hay pantalla de
-  inicio de sesión ni usuarios de Supabase Auth en uso.
+  DataTables, SheetJS — servido como sitio estático (GitHub Pages / Vercel).
+- **Datos**: IndexedDB, en el propio navegador (`js/dataService.js`). No
+  hay servidor, no hay credenciales que configurar. Limitación real: los
+  datos NO se sincronizan entre dispositivos — si se abre la app en otro
+  computador o celular, hay que volver a cargar el Excel ahí también.
+- **Carga de datos**: botón "📂 Cargar Excel" (o la pantalla inicial si
+  todavía no hay nada cargado) — sube el `.xlsx` con las hojas
+  `AUDITORIAS_2026` y `HALLAZGOS_2026`, lo procesa en el navegador
+  (`js/excelParser.js` + `js/matching.js` + `js/excelImport.js`, misma
+  lógica que antes corría en Node contra Supabase) y reemplaza todo el
+  contenido guardado.
+- **Edición puntual**: los formularios "+ Nueva Auditoría/Inspección/
+  Hallazgo" y el clic sobre una fila siguen disponibles para ajustes entre
+  una carga de Excel y la siguiente — se guardan en IndexedDB igual que la
+  carga masiva.
 
-## Puesta en marcha (una sola vez)
+## Puesta en marcha
 
-1. **Crear el proyecto Supabase**: [supabase.com](https://supabase.com) →
-   New Project.
-2. **Crear el esquema**: pega el contenido de `supabase/schema.sql` en el
-   SQL Editor del proyecto y ejecútalo, y a continuación
-   `supabase/schema_open_access.sql` (deja las tablas de lectura/escritura
-   pública, sin exigir sesión iniciada).
-3. **Configurar el frontend**: copia `js/config.example.js` a `js/config.js`
-   y completa `SUPABASE_URL` / `SUPABASE_ANON_KEY` (Project Settings → API
-   → la *anon public key*, no la *service_role*). `js/config.js` está en
-   `.gitignore`, nunca se commitea.
-4. **(Opcional) Migrar los datos históricos**: ver
-   [`scripts/migrate-to-supabase.mjs`](scripts/migrate-to-supabase.mjs) —
-   copia `scripts/.env.example` a `scripts/.env`, complétalo, y corre
-   `node scripts/migrate-to-supabase.mjs`. Solo hace falta una vez.
-5. **Abrir la app**: `index.html` directamente en el navegador (o servido
-   por cualquier servidor estático) — se ve el dashboard directo, sin login.
-6. **Desplegar a GitHub Pages**: ver `.github/workflows/deploy.yml` —
-   agrega los secrets `SUPABASE_URL` y `SUPABASE_ANON_KEY` en Settings →
-   Secrets and variables → Actions, activa Pages con "Source: GitHub
-   Actions", y cada push a `main` publica la app automáticamente.
+No hay ningún paso de configuración: se abre `index.html` (local o
+desplegado) y la propia app pide el Excel la primera vez.
+
+**Desplegar a GitHub Pages**: ver `.github/workflows/deploy.yml` — activa
+Pages con "Source: GitHub Actions" en Settings → Pages, y cada push a
+`main` publica la app automáticamente (sin secrets que configurar).
+
+**Desplegar a Vercel**: en [vercel.com](https://vercel.com), "Add New… →
+Project" → importa este repo de GitHub. Es un sitio 100% estático (sin
+framework, sin build command) — Vercel lo detecta solo. Se puede desplegar
+en paralelo a GitHub Pages sin conflicto (mismo repo, dos URLs distintas).
 
 ## Estructura del proyecto
 
@@ -55,90 +53,67 @@ Excel cada vez.
 SATENA_QA_Dashboard/
 ├── index.html                Estructura y layout de toda la app
 ├── styles.css                 Sistema visual (paleta corporativa, responsive, impresión)
-├── data.js                     Configuración visual (colores por categoría, KPI.PROXIMOS_DIAS)
+├── data.js                     Configuración visual (colores por categoría, reglas de clasificación)
 ├── README.md                     Este archivo
-├── .gitignore                     js/config.js y scripts/.env nunca se commitean
-├── supabase/
-│   ├── schema.sql                  Tablas + Row Level Security (correr una vez en Supabase)
-│   └── schema_open_access.sql       Abre las políticas RLS a acceso público (sin login)
-├── scripts/
-│   ├── migrate-to-supabase.mjs      Migración única Excel/carpetas -> Supabase (Node)
-│   └── .env.example                  Plantilla de variables para el script de migración
 ├── .github/workflows/
-│   └── deploy.yml                     Publica a GitHub Pages en cada push a main
-├── assets/
-│   ├── logo_satena_blanco.png
-│   └── fonts/                 IBM Plex Sans/Mono autoalojadas (sin depender de Google Fonts)
+│   └── deploy.yml                  Publica a GitHub Pages en cada push a main
+├── assets/fonts/               IBM Plex Sans/Mono autoalojadas (sin depender de Google Fonts)
 ├── vendor/                Librerías de terceros ya descargadas (sin CDN externo en runtime)
-│   Bootstrap 5 · Chart.js 4 · SheetJS (xlsx, solo para exportar) · DataTables + jQuery
-│   · jsPDF · html2canvas · FileSaver · Supabase JS SDK
+│   Bootstrap 5 · Chart.js 4 · SheetJS (xlsx) · DataTables + jQuery · jsPDF · html2canvas · FileSaver
 └── js/
-    ├── config.example.js       Plantilla de credenciales Supabase (copiar a config.js)
     ├── utils.js                  Normalización de texto, fechas, formato — funciones puras
-    ├── supabaseClient.js           Inicialización del cliente Supabase
-    ├── dataService.js                Fuente de datos: fetch/save/delete + Realtime
-    ├── statusEngine.js                 Cálculo del estado real de cada auditoría
-    ├── kpiEngine.js                      Cálculo de KPIs y agregaciones para gráficos
-    ├── charts.js                          Renderizado de todos los gráficos (Chart.js)
-    ├── tables.js                            Tablas dinámicas (DataTables) + export a Excel
-    ├── filters.js                            Filtros globales
-    ├── exportPdf.js                           Exportación del dashboard a PDF
-    └── app.js                                  Orquestación: carga, edición, render
+    ├── excelParser.js              Lee las hojas AUDITORIAS_2026 / HALLAZGOS_2026 del Excel
+    ├── matching.js                   Clasificación canónica + vínculo hallazgo->auditoría por nombre
+    ├── excelImport.js                  Junta lo anterior en objetos listos para guardar
+    ├── dataService.js                    Fuente de datos: IndexedDB (fetch/save/delete)
+    ├── statusEngine.js                     Cálculo del estado real de cada auditoría
+    ├── kpiEngine.js                          Cálculo de KPIs y agregaciones para gráficos
+    ├── charts.js                              Renderizado de todos los gráficos (Chart.js)
+    ├── tables.js                                Tablas dinámicas (DataTables) + export a Excel
+    ├── filters.js                                Filtros globales
+    ├── exportPdf.js                               Exportación del dashboard a PDF
+    └── app.js                                      Orquestación: carga, edición, render
 ```
 
-Los archivos retirados de `index.html` (`fileAccess.js`, `excelParser.js`,
-`folderScanner.js`, `matching.js`, `faaSelfEval.js`) siguen existiendo en
-`js/` porque `scripts/migrate-to-supabase.mjs` los reutiliza tal cual (en
-un contexto Node) para la migración única — no se tocan salvo que cambie
-esa lógica de negocio.
+## Modelo de datos
 
-## Modelo de datos (Supabase)
+El Excel de control tiene 2 hojas (ver `js/excelParser.js` para el detalle
+exacto de columnas):
 
-Ver `supabase/schema.sql` para el detalle completo de columnas. Resumen:
-
-| Tabla | Contenido |
+| Hoja | Contenido |
 |---|---|
-| `auditorias` | Programa de auditorías (antes "CRONO DEF") + estado de evidencia editable a mano (conteos por carpeta `01_AVI`..`05_EVI`, ya no escaneados de disco). |
-| `hallazgos` | No Conformidades / Observaciones, con `auditoria_id` como FK real hacia `auditorias` (antes se adivinaba por similitud de nombre; ahora se elige explícitamente en el formulario). |
-| `control_satdsg` | Bitácora de comunicaciones oficiales (Aviso/Informe/Seguimiento/Cierre) — solo trazabilidad. |
-| `faa_self_eval_documentos` | Metadatos de documentos de autoevaluación FAA (categoría, nombre, fecha, tamaño) — **no** se sube el archivo, solo su registro. |
+| `AUDITORIAS_2026` | Una fila por auditoría/inspección: Estatus, Programada/No programada, Tipo (Auditoria QA / Inspección), Clasificación, Auditado, Ciudad, Modalidad, Fecha Proyectada, Ejecución Reprogramada, Servicios. |
+| `HALLAZGOS_2026` | Una fila por hallazgo (NC/OB), vinculado a su auditoría por similitud de nombre (no comparten ID) — condición, estado (Abierto/Cerrado/Cierre Parcial), causa raíz, fechas de notificación/cierre, etc. |
 
 ### ¿Cuándo se considera "ejecutada" una auditoría?
 
-Editable en `js/statusEngine.js` (función `computeEstado`):
-
-- **Ejecutada**: `evidencia_counts.02_REA` o `evidencia_counts.04_CIE` > 0.
-- **En Ejecución**: solo hay conteo en `01_AVI`, `03_SEG` o `05_EVI`.
-- **Vencida**: la fecha programada ya pasó y no hay ningún conteo de evidencia.
-- **Pendiente**: la fecha programada todavía no llega y no hay evidencia.
-- **Cancelada** / **Reprogramada**: se toman del campo manual del
-  cronograma (`estatus_manual_crono`) y de `fecha_reprogramacion`.
+Ya no se infiere de nada: viene directo de la columna **Estatus** del
+Excel (`Por Ejecutar` / `Ejecutada` / `No Ejecutada` / `Cancelada`) — ver
+`js/statusEngine.js#computeEstado`.
 
 ### Auditorías extraordinarias (no programadas)
 
-`es_extraordinaria = true` cuando no había fecha en el cronograma
-originalmente aprobado, o cuando se agrega evidencia de una auditoría que
-nunca estuvo en el cronograma (incluye las categorías FAA Self
-Evaluation). Estas auditorías **suman al % de cumplimiento** contra el
-total programado al inicio del año — el indicador puede superar el 100%
-si además de cumplirse todo lo proyectado se ejecutan auditorías
-adicionales no programadas (ver `js/kpiEngine.js#computeKpis`).
+Columna **Programada** = "No programada" en el Excel. Estas auditorías
+**suman al % de avance total** contra el total programado al inicio del
+año — el indicador puede superar el 100% (ver
+`js/kpiEngine.js#computeKpis`, tarjetas "% Cumplimiento Cronograma
+Original" vs "% Avance Total del Programa").
 
-Su fecha de ejecución real (usada en el gráfico "Programadas vs Ejecutadas
-por Mes") es el campo editable `fecha_ejecucion_real` — deliberadamente
-**no** se infiere de metadatos de archivo (la fecha de modificación de
-documentos sincronizados desde la nube no refleja la fecha real de
-ejecución), así que hay que cargarla a mano desde el formulario de
-auditoría cuando se confirme la fecha real.
+### Fecha de referencia de cada auditoría
+
+Columna **Ejecución Reprogramada** si tiene valor: si no, columna **Fecha
+Proyectada** (ver `js/statusEngine.js#computeFechaReferencia`) — aplica
+igual a programadas y extraordinarias.
 
 ## Mantenimiento futuro
 
-- **Nuevo proveedor/área auditada**: crear la auditoría desde el botón
-  "+ Nueva Auditoría" del dashboard — no requiere tocar código ni Excel.
+- **Actualizar el progreso**: botón "📂 Cargar Excel" con la versión más
+  reciente del archivo de control — reemplaza TODO lo que había.
+- **Ajuste puntual entre cargas**: formularios "+ Nueva Auditoría/
+  Inspección/Hallazgo" o clic sobre una fila de la tabla.
 - **Cambiar la regla de "ejecutada"**: editar únicamente
   `js/statusEngine.js` (función `computeEstado`).
-- **Volver a exigir login**: el acceso hoy es público (políticas RLS
-  `using (true)` en `supabase/schema_open_access.sql`). Para restringir de
-  nuevo, vuelve a aplicar `supabase/schema.sql` (políticas
-  `auth.uid() is not null`) y restaura la pantalla de login en `index.html`
-  / `js/app.js` (ver historial de git antes de este cambio).
+- **Multi-dispositivo / colaboración en equipo**: no hay sincronización
+  entre navegadores. El flujo recomendado es mantener el Excel de control
+  compartido con el equipo (ej. OneDrive) y cargarlo en la app cuando se
+  quiera ver el progreso actualizado.
