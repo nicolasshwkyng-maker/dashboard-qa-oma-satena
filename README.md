@@ -1,7 +1,7 @@
-# Dashboard QA-OMA — SATENA M.R.O.
+# Dashboard QA-OMA
 
 Aplicación web para visualizar el estado de ejecución del Programa Anual de
-Auditorías de Aseguramiento de la Calidad de la OMA SATENA. **Sin backend,
+Auditorías de Aseguramiento de la Calidad de la OMA. **Sin backend,
 sin login, sin credenciales**: los datos se cargan subiendo el Excel de
 control (hojas `AUDITORIAS_2026` + `HALLAZGOS_2026`) y quedan guardados en
 el navegador de quien la abre (IndexedDB). Para actualizarla, se vuelve a

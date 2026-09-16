@@ -1,5 +1,5 @@
 /**
- * data.js — Configuración y reglas de negocio del Dashboard QA-OMA SATENA MRO
+ * data.js — Configuración y reglas de negocio del Dashboard QA-OMA
  * ============================================================================
  * Este archivo NO contiene datos de auditorías (esos se leen en vivo desde los
  * archivos Excel y la carpeta de evidencias, tal como lo exige el proyecto).
@@ -344,7 +344,7 @@ QA.config = {
    * la ejecución real ocurre por documento/parte en fechas dispersas, no
    * como una auditoría única programada.
    *
-   * Si el año siguiente cambia el número de categorías (SATENA agrega o
+   * Si el año siguiente cambia el número de categorías (se agrega o
    * quita un "limited rating"), NO hace falta tocar el código: el
    * escáner (js/folderScanner.js) detecta automáticamente cualquier
    * sub-carpeta nueva dentro de "Self Evaluation Completadas" y la trata
@@ -354,9 +354,6 @@ QA.config = {
   FAA_SELF_EVAL: {
     enabled: true,
     folderName: "Self Evaluation Completadas",
-    // Auditado sintético que se muestra en tablas/tarjetas para cada
-    // categoría cuando no hay una coincidencia más específica.
-    labelPrefix: "SATENA M.R.O. — Autoevaluación FAA",
     // Documentos sueltos en la raíz de la carpeta (no dentro de una
     // sub-carpeta de categoría) se agrupan en esta categoría "general".
     generalCategoryKey: "general",

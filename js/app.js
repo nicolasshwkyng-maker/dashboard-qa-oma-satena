@@ -661,7 +661,7 @@
       try {
         await QA.exportPdf.exportDashboardToPdf(
           ["secResumen", "secPrograma", "secInspecciones", "secHallazgos", "secFaa"],
-          { title: "Dashboard QA-OMA — SATENA M.R.O.", onProgress: (i, total) => showLoading(`Generando PDF… (${i + 1}/${total})`) }
+          { title: "Dashboard QA-OMA", onProgress: (i, total) => showLoading(`Generando PDF… (${i + 1}/${total})`) }
         );
       } catch (e) {
         console.error(e);
