@@ -374,7 +374,19 @@ QA.matching = (function () {
           });
           return { best, bestScore };
         };
-        let { best, bestScore } = bestIn(pool);
+        // Una auditoría con el MISMO nombre gana siempre, aunque esté
+        // clasificada distinto al hallazgo (el equipo puede tener la
+        // auditoría en otra categoría): sin esto, una parecida de la misma
+        // categoría le quitaba el hallazgo — y con él, su estado de cierre.
+        const nombre = u.normalize(finding.auditado);
+        const exactas = nombre ? audits.filter((a) => u.normalize(a.auditado) === nombre) : [];
+        let best = null, bestScore = 0;
+        if (exactas.length) {
+          best = exactas.find((a) => a.clasificacionCanonica === category) || exactas[0];
+          bestScore = 1;
+        } else {
+          ({ best, bestScore } = bestIn(pool));
+        }
         // Si el equipo reclasificó la auditoría en el Excel y ya no coincide
         // con la clasificación del hallazgo, la categoría no debe impedir el
         // vínculo: se reintenta contra todas las auditorías por nombre.
