@@ -58,6 +58,7 @@ QA.excelImport = (function () {
         hallazgos: findings.length,
         hallazgosVinculados: findings.length - sinVincular,
         hallazgosSinVincular: sinVincular,
+        nombresSinVincular: [...new Set(findings.filter((f) => !f.auditoriaVinculada).map((f) => f.auditado))],
       },
     };
   }

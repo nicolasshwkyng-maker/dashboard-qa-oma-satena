@@ -189,32 +189,16 @@ QA.tables = (function () {
   }
 
   /* ------------------------------------------------------------------ *
-   * Tabla del panel FAA Self Evaluation (lista de los 55 documentos)
+   * Tabla del panel FAA: las auditorías FAA, mismas columnas que Auditorías
    * ------------------------------------------------------------------ */
-  function faaColumns() {
-    return [
-      { data: "categoryLabel", title: "Categoría", render: (v) => u.escapeHtml(v) },
-      { data: "name", title: "Documento", render: (v) => u.escapeHtml(v) },
-      { data: "lastModified", title: "Fecha del archivo", render: (v) => v ? u.formatDate(new Date(v)) : "—" },
-      { data: "size", title: "Tamaño", render: (v) => v ? Math.round(v / 1024) + " KB" : "—" },
-    ];
-  }
-
-  function initFaaTable(faaDocs) {
-    dtFaa = $("#tblFaaDocs").DataTable({
-      data: faaDocs,
-      columns: faaColumns(),
-      pageLength: 10,
-      order: [[0, "asc"]],
-      language: DT_LANG_ES,
-      dom: "<'row mb-2'<'col-sm-6'l><'col-sm-6'f>>rt<'row mt-2'<'col-sm-5'i><'col-sm-7'p>>",
-    });
+  function initFaaTable(audits, onRowClick) {
+    dtFaa = initGenericAuditoriasTable("#tblFaa", audits, onRowClick);
     return dtFaa;
   }
 
-  function updateFaaTable(faaDocs) {
-    if (!dtFaa) return initFaaTable(faaDocs);
-    dtFaa.clear().rows.add(faaDocs).draw();
+  function updateFaaTable(audits, onRowClick) {
+    if (!dtFaa) return initFaaTable(audits, onRowClick);
+    dtFaa.clear().rows.add(audits).draw();
   }
 
   /* ------------------------------------------------------------------ *

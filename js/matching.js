@@ -366,11 +366,21 @@ QA.matching = (function () {
       if (!cache.has(cacheKey)) {
         const category = resolveCategory(finding.clasificacionRaw);
         const pool = (category && auditsByCategory.get(category)) || audits;
-        let best = null, bestScore = 0;
-        pool.forEach((a) => {
-          const score = u.textSimilarity(finding.auditado, a.auditado);
-          if (score > bestScore) { bestScore = score; best = a; }
-        });
+        const bestIn = (list) => {
+          let best = null, bestScore = 0;
+          list.forEach((a) => {
+            const score = u.textSimilarity(finding.auditado, a.auditado);
+            if (score > bestScore) { bestScore = score; best = a; }
+          });
+          return { best, bestScore };
+        };
+        let { best, bestScore } = bestIn(pool);
+        // Si el equipo reclasificó la auditoría en el Excel y ya no coincide
+        // con la clasificación del hallazgo, la categoría no debe impedir el
+        // vínculo: se reintenta contra todas las auditorías por nombre.
+        if ((!best || bestScore < FINDINGS_MATCH_THRESHOLD) && pool !== audits) {
+          ({ best, bestScore } = bestIn(audits));
+        }
         cache.set(cacheKey, (best && bestScore >= FINDINGS_MATCH_THRESHOLD) ? { audit: best, score: bestScore } : null);
       }
       const match = cache.get(cacheKey);

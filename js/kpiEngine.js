@@ -217,19 +217,23 @@ QA.kpiEngine = (function () {
   const keyClasificacion = a => a.clasificacionLabel;
   const keyModalidad = a => a.modalidad;
   const keyUbicacion = a => a.ciudad;
-  const keyFaaCategoria = d => d.categoryLabel;
   const keyHallazgoClasificacion = f => f.clasificacionReporte;
   const keyHallazgoProceso = f => f.procesoReporte;
 
   function porClasificacion(audits) { return countBy(audits, keyClasificacion); }
   function porModalidad(audits) { return countBy(audits, keyModalidad); }
   function porUbicacion(audits) { return countBy(audits, keyUbicacion); }
-  function faaPorCategoria(faaDocs) { return countBy(faaDocs, keyFaaCategoria); }
+  /** Auditorías FAA ("limited ratings" de la propia OMA): filas de
+   * AUDITORIAS_2026 cuyo nombre coincide con alguna categoría de
+   * QA.config.FAA_SELF_EVAL.categories (ver data.js). */
+  function faaAuditorias(audits) {
+    const cats = QA.config.FAA_SELF_EVAL.categories.map(c => u.normalize(c.cronogramaAuditadoMatch));
+    return audits.filter((a) => { const n = u.normalize(a.auditado); return cats.some(c => n.includes(c)); });
+  }
 
   function auditoriasPorClasificacionItems(audits, label) { return itemsWhere(audits, keyClasificacion, label); }
   function auditoriasPorModalidadItems(audits, label) { return itemsWhere(audits, keyModalidad, label); }
   function auditoriasPorUbicacionItems(audits, label) { return itemsWhere(audits, keyUbicacion, label); }
-  function faaPorCategoriaItems(faaDocs, label) { return itemsWhere(faaDocs, keyFaaCategoria, label); }
 
   function estadoPrograma(audits) {
     const order = ["Por Ejecutar", "Ejecutada", "No Ejecutada", "Cancelada", "Extraordinarias"];
@@ -298,8 +302,8 @@ QA.kpiEngine = (function () {
 
   return {
     computeKpis, avanceEsperadoVsReal, avanceEsperadoVsRealConNoProgramadas, programaPorMes, auditoriasDeMes,
-    porClasificacion, porModalidad, porUbicacion, faaPorCategoria, porTipoRegistro,
-    auditoriasPorClasificacionItems, auditoriasPorModalidadItems, auditoriasPorUbicacionItems, faaPorCategoriaItems,
+    porClasificacion, porModalidad, porUbicacion, faaAuditorias, porTipoRegistro,
+    auditoriasPorClasificacionItems, auditoriasPorModalidadItems, auditoriasPorUbicacionItems,
     estadoPrograma, estadoProgramaItems, auditoriasPorCierre, auditoriasPorCierreItems,
     hallazgosReales,
     hallazgosPorEstado, hallazgosPorEstadoItems, hallazgosPorClasificacion, hallazgosPorClasificacionItems,

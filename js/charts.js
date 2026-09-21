@@ -228,8 +228,8 @@ QA.charts = (function () {
   }
 
   /** Dona "Auditorías por Cierre" (rollup calculado desde sus hallazgos). */
-  function renderAuditoriasPorCierre(buckets, onClick) {
-    getOrCreate("chartAuditoriasPorCierre", doughnutConfig(
+  function renderAuditoriasPorCierre(buckets, onClick, canvasId) {
+    getOrCreate(canvasId || "chartAuditoriasPorCierre", doughnutConfig(
       buckets.map(b => b.label), buckets.map(b => b.value),
       buckets.map(b => CIERRE_COLORS[b.label] || PALETTE.grisM),
       onClick
@@ -281,18 +281,6 @@ QA.charts = (function () {
   }
 
   /* ------------------------------------------------------------------ *
-   * FAA Self Evaluation
-   * ------------------------------------------------------------------ */
-  function renderFaaCategorias(pairs, onClick) {
-    getOrCreate("chartFaaCategorias", barConfig({
-      labels: pairs.map(p => p[0]),
-      horizontal: true,
-      datasets: [{ label: "Documentos", data: pairs.map(p => p[1]), backgroundColor: PALETTE.azulM, borderRadius: 4 }],
-      onClick,
-    }));
-  }
-
-  /* ------------------------------------------------------------------ *
    * Punto de entrada: recibe TODO lo agregado (kpiEngine) y pinta todo.
    * `handlers` (opcional) trae un callback de drill-down por gráfico —
    * ver app.js#renderEverything para cómo se arman.
@@ -329,5 +317,5 @@ QA.charts = (function () {
     Object.values(instances).forEach((c) => { try { c.resize(); } catch (e) { /* noop */ } });
   }
 
-  return { renderAll, resizeAll, renderFaaCategorias };
+  return { renderAll, resizeAll, renderAuditoriasPorCierre };
 })();

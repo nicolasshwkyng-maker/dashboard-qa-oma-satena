@@ -9,7 +9,7 @@
  * refresco automático de KPIs/gráficas/tablas.
  *
  * Pipeline de carga:
- *   1. dataService.fetchAuditorias / fetchHallazgos / fetchFaaDocumentos
+ *   1. dataService.fetchAuditorias / fetchHallazgos
  *   2. statusEngine.applyAll -> calcula el estado real de cada auditoría
  *   3. attachFindingsToAudits -> agrega conteos de hallazgos por auditoría
  *   4. kpiEngine + charts + tables -> se pintan con los datos ya filtrados
@@ -19,7 +19,7 @@
   const u = QA.utils;
 
   const state = {
-    allAudits: [], allFindings: [], allFaaDocs: [],
+    allAudits: [], allFindings: [],
     loaded: false, lastKpis: null,
   };
   let stopRealtime = null;
@@ -81,7 +81,8 @@
 
   function attachFindingsToAudits(audits, findingsByAuditId) {
     audits.forEach((a) => {
-      const list = findingsByAuditId.get(a.id) || [];
+      // Los marcadores "N/A" (cierre sin hallazgo) no son hallazgos reales.
+      const list = QA.kpiEngine.hallazgosReales(findingsByAuditId.get(a.id) || []);
       a.hallazgosVinculados = list.length;
       a.hallazgosVinculadosNC = list.filter(f => f.condicion === "NC").length;
       a.hallazgosVinculadosOB = list.filter(f => f.condicion === "OB").length;
@@ -98,9 +99,9 @@
 
   async function loadAndRenderAll() {
     try {
-      showLoading("Leyendo auditorías, hallazgos y documentos FAA…");
-      const [audits, findings, faaDocs] = await Promise.all([
-        QA.dataService.fetchAuditorias(), QA.dataService.fetchHallazgos(), QA.dataService.fetchFaaDocumentos(),
+      showLoading("Leyendo auditorías y hallazgos…");
+      const [audits, findings] = await Promise.all([
+        QA.dataService.fetchAuditorias(), QA.dataService.fetchHallazgos(),
       ]);
       const findingsByAuditId = buildFindingsByAuditId(findings);
       QA.statusEngine.applyAll(audits, findingsByAuditId);
@@ -108,7 +109,6 @@
 
       state.allAudits = audits;
       state.allFindings = findings;
-      state.allFaaDocs = faaDocs;
       state.loaded = true;
 
       QA.filters.load();
@@ -299,14 +299,6 @@
         <td>${u.escapeHtml(estadoEfectivoHallazgo(f) || "—")}</td>
         <td>${u.formatDate(f.fechaInicio)}</td>
       </tr>`).join("") : `<tr><td colspan="5" class="text-center text-muted py-3">Sin registros.</td></tr>`;
-    } else if (kind === "docs") {
-      head.innerHTML = "<tr><th>Categoría</th><th>Documento</th><th>Fecha</th><th>Tamaño</th></tr>";
-      body.innerHTML = items.length ? items.map(d => `<tr>
-        <td>${u.escapeHtml(d.categoryLabel || "—")}</td>
-        <td>${u.escapeHtml(d.name || "—")}</td>
-        <td>${d.lastModified ? u.formatDate(new Date(d.lastModified)) : "—"}</td>
-        <td>${d.size ? Math.round(d.size / 1024) + " KB" : "—"}</td>
-      </tr>`).join("") : `<tr><td colspan="4" class="text-center text-muted py-3">Sin registros.</td></tr>`;
     } else {
       head.innerHTML = "<tr><th>Auditoría / Inspección</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr>";
       body.innerHTML = items.length ? items.map(a => `<tr>
@@ -516,18 +508,21 @@
   /* ------------------------------------------------------------------ *
    * Panel FAA Self Evaluation (metadatos, ver js/dataService.js)
    * ------------------------------------------------------------------ */
-  function renderFaaPanel() {
-    const docs = state.allFaaDocs;
-    const categorias = new Set(docs.map(d => d.categoryKey));
+  function renderFaaPanel(auditoriasSoloTipo) {
+    const faa = QA.kpiEngine.faaAuditorias(auditoriasSoloTipo);
+    const ejecutadas = faa.filter(a => a.estadoCalculado === QA.statusEngine.ESTADOS.EJECUTADA).length;
+    const cerradas = faa.filter(a => a.cierreRollup === QA.statusEngine.CIERRE.CERRADO).length;
+    const hallazgos = faa.reduce((n, a) => n + (a.hallazgosVinculados || 0), 0);
     document.getElementById("kpiGridFaa").innerHTML = [
-      kpiCardHtml("Documentos / Revisiones", docs.length, "En Self Evaluation Completadas"),
-      kpiCardHtml("Categorías con Evidencia", categorias.size),
-      kpiCardHtml("Auditorías Extraordinarias Generadas", categorias.size, "Suman a la ejecución general del programa"),
+      kpiCardHtml("Auditorías FAA", faa.length, "Categorías detectadas en AUDITORIAS_2026"),
+      kpiCardHtml("Ejecutadas", ejecutadas),
+      kpiCardHtml("Cerradas", cerradas, "Todos sus hallazgos cerrados"),
+      kpiCardHtml("Hallazgos vinculados", hallazgos),
     ].join("");
-    QA.charts.renderFaaCategorias(QA.kpiEngine.faaPorCategoria(docs), (label) => {
-      openKpiModal(`FAA — ${label}`, QA.kpiEngine.faaPorCategoriaItems(docs, label), "docs");
-    });
-    QA.tables.updateFaaTable(docs);
+    QA.charts.renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(faa), (label) => {
+      openKpiModal(`Auditorías FAA — ${label}`, QA.kpiEngine.auditoriasPorCierreItems(faa, label), "audits");
+    }, "chartFaaCierre");
+    QA.tables.updateFaaTable(faa, openAuditoriaForm);
   }
 
   /* ------------------------------------------------------------------ *
@@ -591,7 +586,7 @@
     // kpiEngine#hallazgosReales) de la tabla — no son hallazgos reales, solo
     // se usan para el rollup de cierre de la auditoría.
     QA.tables.updateHallazgosTable(QA.kpiEngine.hallazgosReales(findings), openHallazgoForm);
-    renderFaaPanel();
+    renderFaaPanel(auditoriasSoloTipo);
     QA.charts.resizeAll();
   }
 
@@ -638,7 +633,7 @@
         await startApp();
         let msg = `Carga completa: ${resumen.auditorias} auditorías, ${resumen.inspecciones} inspecciones, ${resumen.hallazgos} hallazgos (${resumen.hallazgosVinculados} vinculados a una auditoría).`;
         if (resumen.hallazgosSinVincular) {
-          msg += `\n\n${resumen.hallazgosSinVincular} hallazgo(s) no se pudieron vincular a ninguna auditoría por similitud de nombre — revisa la columna "Auditado" de HALLAZGOS_2026 si esperabas verlos vinculados.`;
+          msg += `\n\n${resumen.hallazgosSinVincular} hallazgo(s) no se pudieron vincular a ninguna auditoría por similitud de nombre. Auditados sin coincidencia:\n- ${resumen.nombresSinVincular.slice(0, 10).join("\n- ")}\n\nRevisa que el nombre en la columna "NOMBRE AUDITADO" de HALLAZGOS_2026 sea igual al de "Area o Proveedor" en AUDITORIAS_2026.`;
         }
         alert(msg);
       } catch (e) {

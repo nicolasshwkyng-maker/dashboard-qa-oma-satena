@@ -181,15 +181,16 @@
     <!-- ============================= FAA SELF EVALUATION ============================= -->
     <section id="secFaa" class="qa-section d-none">
       <div class="qa-alert-info">
-        Panel dedicado a las autoevaluaciones FAA ("Self Evaluation Completadas"). Cada categoría ("limited category") se contabiliza como <strong>una auditoría ejecutada extraordinaria</strong> en las cifras generales del programa, independientemente de la cantidad de documentos/revisiones individuales que contenga.
+        Auditorías FAA (<em>limited ratings</em> de la propia OMA): se detectan automáticamente en la hoja <strong>AUDITORIAS_2026</strong> por su nombre (Limited Accessories, Airframe, Emergency Equipment, Engine, Instruments, Propeller, Radio, Other Metallic and Composite Components). Suman al programa general como cualquier otra auditoría; aquí se ven aparte.
       </div>
-      <div class="qa-kpi-grid cols-3" id="kpiGridFaa"></div>
+      <div class="qa-kpi-grid cols-4" id="kpiGridFaa"></div>
       <div class="qa-chart-grid cols-1">
-        <div class="qa-chart-card"><div class="qa-chart-title">Revisiones por Categoría</div><div class="qa-chart-canvas-wrap tall"><canvas id="chartFaaCategorias"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Auditorías FAA por Cierre</div><div class="qa-chart-canvas-wrap"><canvas id="chartFaaCierre"></canvas></div></div>
       </div>
       <div class="qa-table-card">
-        <div class="qa-table-card-header"><div class="qa-chart-title mb-0">Documentos de Autoevaluación</div></div>
-        <div class="table-responsive"><table id="tblFaaDocs" class="table table-hover qa-table w-100"></table></div>
+        <div class="qa-table-card-header"><div class="qa-chart-title mb-0">Auditorías FAA</div></div>
+        <div class="qa-table-hint text-muted small mb-1">Clic en una fila para editarla.</div>
+        <div class="table-responsive"><table id="tblFaa" class="table table-hover qa-table w-100"></table></div>
       </div>
     </section>
 

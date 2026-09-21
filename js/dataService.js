@@ -28,7 +28,6 @@ QA.dataService = (function () {
         const db = req.result;
         if (!db.objectStoreNames.contains("auditorias")) db.createObjectStore("auditorias", { keyPath: "id" });
         if (!db.objectStoreNames.contains("hallazgos")) db.createObjectStore("hallazgos", { keyPath: "id" });
-        if (!db.objectStoreNames.contains("faaDocs")) db.createObjectStore("faaDocs", { keyPath: "id" });
         if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" });
       };
       req.onsuccess = () => resolve(req.result);
@@ -94,7 +93,6 @@ QA.dataService = (function () {
    * ------------------------------------------------------------------ */
   async function fetchAuditorias() { return getAll("auditorias"); }
   async function fetchHallazgos() { return getAll("hallazgos"); }
-  async function fetchFaaDocumentos() { return getAll("faaDocs"); }
 
   /* ------------------------------------------------------------------ *
    * Escritura manual (formularios de edición) — id nuevo si no trae uno.
@@ -159,7 +157,6 @@ QA.dataService = (function () {
   return {
     fetchAuditorias, saveAuditoria, deleteAuditoria,
     fetchHallazgos, saveHallazgo, deleteHallazgo,
-    fetchFaaDocumentos,
     subscribeToChanges,
     replaceAllFromExcel, getLastImportMeta,
   };
