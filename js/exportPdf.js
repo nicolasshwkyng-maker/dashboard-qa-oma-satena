@@ -68,7 +68,7 @@ QA.exportPdf = (function () {
         const w = canvas.width * ratio, h = canvas.height * ratio;
         if (pageAdded) pdf.addPage();
         pdf.setFontSize(10);
-        pdf.setTextColor("#5F5E5A");
+        pdf.setTextColor(QA.config.PALETTE.gris);
         pdf.text(`${opts.title || "Dashboard QA-OMA"} — ${new Date().toLocaleDateString("es-CO")}`, margin, margin);
         pdf.addImage(imgData, "PNG", (pageW - w) / 2, margin + 12, w, h);
         pageAdded = true;

@@ -16,14 +16,14 @@ window.QA = window.QA || {};
 QA.charts = (function () {
   const instances = {};
 
+  // Nombres cortos sobre la paleta central (QA.config.PALETTE, en data.js).
+  const P = QA.config.PALETTE;
   const PALETTE = {
-    azul: "#0C447C", azulM: "#185FA5", azulL: "#E6F1FB",
-    teal: "#085041", tealM: "#0F6E56", tealL: "#E1F5EE",
-    gris: "#2C2C2A", grisM: "#5F5E5A", grisL: "#F1EFE8",
-    amber: "#B5541C", amberL: "#FBEADD",
-    rojo: "#A32D2D", rojoL: "#FCEBEB",
-    verde: "#3B6D11", verdeL: "#EAF3DE",
-    morado: "#534AB7",
+    azul: P.azul, azulM: P.acero, azulL: P.aceroL,
+    amarillo: P.amarillo,
+    rojo: P.rojo, rojoL: P.rojoL,
+    verde: P.verde, verdeL: P.verdeL,
+    gris: P.azul, grisM: P.gris, grisL: P.grisL,
   };
 
   const DONUT_BUCKET_COLORS = {
@@ -31,13 +31,13 @@ QA.charts = (function () {
     "Ejecutada": PALETTE.verde,
     "No Ejecutada": PALETTE.rojo,
     "Cancelada": PALETTE.grisM,
-    "Extraordinarias": PALETTE.morado,
+    "Extraordinarias": PALETTE.amarillo,
   };
 
   const CIERRE_COLORS = {
     "Cerrada": PALETTE.verde,
     "Abierta": PALETTE.rojo,
-    "Cierre Parcial": PALETTE.amber,
+    "Cierre Parcial": PALETTE.amarillo,
   };
 
   const CATEGORY_SERIES_COLORS = Object.values(QA.config.CATEGORY_COLORS).map(c => c[0]);
@@ -85,7 +85,7 @@ QA.charts = (function () {
     return options;
   }
 
-  function barConfig({ labels, datasets, horizontal, stacked, onClick }) {
+  function barConfig({ labels, datasets, horizontal, stacked, onClick, tooltipFooter }) {
     return {
       type: "bar",
       data: { labels, datasets },
@@ -93,10 +93,13 @@ QA.charts = (function () {
         indexAxis: horizontal ? "y" : "x",
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: datasets.length > 1, position: "top", align: "end" } },
+        plugins: {
+          legend: { display: datasets.length > 1, position: "top", align: "end" },
+          tooltip: tooltipFooter ? { callbacks: { footer: tooltipFooter } } : {},
+        },
         scales: {
           x: { stacked: !!stacked, grid: { display: !horizontal }, ticks: { autoSkip: false } },
-          y: { stacked: !!stacked, grid: { display: horizontal, color: "#EDEBE3" }, beginAtZero: true },
+          y: { stacked: !!stacked, grid: { display: horizontal, color: PALETTE.grisL }, beginAtZero: true },
         },
       }, onClick),
     };
@@ -168,7 +171,7 @@ QA.charts = (function () {
           tooltip: { callbacks: { label: () => `Avance real: ${d.realPct}%` } },
         },
         scales: {
-          x: { min: 0, max: scaleMax, grid: { color: "#EDEBE3" }, ticks: { callback: (v) => v + "%" } },
+          x: { min: 0, max: scaleMax, grid: { color: PALETTE.grisL }, ticks: { callback: (v) => v + "%" } },
           y: { display: false },
         },
       },
@@ -179,16 +182,42 @@ QA.charts = (function () {
   /* ------------------------------------------------------------------ *
    * PROGRAMA
    * ------------------------------------------------------------------ */
-  function renderProgramaPorMes(d, onClick) {
-    getOrCreate("chartProgramaMes", barConfig({
+  /** Pie del tooltip de las barras apiladas: al pasar por la barra de lo
+   * ejecutado (ejecutadas + no programadas ejecutadas), muestra su total. */
+  function footerTotalEjecutadas(items) {
+    if (!items.length || items[0].dataset.stack !== "ejec") return "";
+    const i = items[0].dataIndex;
+    const total = items[0].chart.data.datasets
+      .filter(ds => ds.stack === "ejec")
+      .reduce((sum, ds) => sum + (ds.data[i] || 0), 0);
+    return `Total ejecutadas: ${total}`;
+  }
+
+  /** 3 series en 2 pilas: "prog" (lo programado originalmente) frente a
+   * "ejec" (ejecutadas + no programadas ejecutadas, apiladas). Sirve igual
+   * para meses y para ubicaciones (`horizontal`). */
+  function programadoVsEjecutadoConfig(d, horizontal, onClick) {
+    return barConfig({
       labels: d.labels,
+      horizontal,
+      stacked: true,
       datasets: [
-        { label: "Programadas", data: d.programadas, backgroundColor: PALETTE.azulL, borderColor: PALETTE.azulM, borderWidth: 1.5, borderRadius: 4 },
-        { label: "Ejecutadas", data: d.ejecutadas, backgroundColor: PALETTE.verde, borderRadius: 4 },
-        { label: "No Programadas Ejecutadas", data: d.extraordinarias, backgroundColor: PALETTE.morado, borderRadius: 4 },
+        { label: "Programadas", stack: "prog", data: d.programadas, backgroundColor: PALETTE.azulL, borderColor: PALETTE.azulM, borderWidth: 1.5, borderRadius: 4 },
+        { label: "Ejecutadas", stack: "ejec", data: d.ejecutadas, backgroundColor: PALETTE.azul, borderRadius: 4 },
+        { label: "No Programadas Ejecutadas", stack: "ejec", data: d.extraordinarias, backgroundColor: PALETTE.amarillo, borderRadius: 4 },
       ],
       onClick,
-    }));
+      tooltipFooter: footerTotalEjecutadas,
+    });
+  }
+
+  function renderProgramaPorMes(d, onClick) {
+    getOrCreate("chartProgramaMes", programadoVsEjecutadoConfig(d, false, onClick));
+  }
+
+  /** Inspecciones: programadas vs ejecutadas por ubicación. */
+  function renderProgramaPorUbicacion(d, canvasId, onClick) {
+    getOrCreate(canvasId, programadoVsEjecutadoConfig(d, true, onClick));
   }
 
   /** `canvasId` parametrizable para poder reusar el mismo gráfico en la
@@ -205,7 +234,7 @@ QA.charts = (function () {
   function renderPorModalidad(pairs, canvasId, onClick) {
     getOrCreate(canvasId || "chartModalidad", doughnutConfig(
       pairs.map(p => p[0]), pairs.map(p => p[1]),
-      [PALETTE.azulM, PALETTE.tealM, PALETTE.grisM, PALETTE.amber],
+      [PALETTE.azulM, PALETTE.azul, PALETTE.amarillo, PALETTE.grisM],
       onClick
     ));
   }
@@ -240,7 +269,7 @@ QA.charts = (function () {
    * HALLAZGOS
    * ------------------------------------------------------------------ */
   function renderHallazgosEstado(pairs, onClick) {
-    const colorFor = (label) => label === "Cerrado" ? PALETTE.verde : label === "Abierto" ? PALETTE.rojo : label === "Cierre Parcial" ? PALETTE.amber : PALETTE.grisM;
+    const colorFor = (label) => label === "Cerrado" ? PALETTE.verde : label === "Abierto" ? PALETTE.rojo : label === "Cierre Parcial" ? PALETTE.amarillo : PALETTE.grisM;
     getOrCreate("chartHallazgosEstado", doughnutConfig(pairs.map(p => p[0]), pairs.map(p => p[1]), pairs.map(p => colorFor(p[0])), onClick));
   }
 
@@ -250,15 +279,6 @@ QA.charts = (function () {
       horizontal: true,
       datasets: [{ label: "Hallazgos", data: pairs.map(p => p[1]), backgroundColor: PALETTE.rojo, borderRadius: 4 }],
       onClick: onClick ? (label, dsLabel, index) => onClick(pairs[index] ? pairs[index][0] : label, dsLabel, index) : undefined,
-    }));
-  }
-
-  function renderHallazgosProceso(pairs, onClick) {
-    getOrCreate("chartHallazgosProceso", barConfig({
-      labels: pairs.map(p => p[0]),
-      horizontal: true,
-      datasets: [{ label: "Hallazgos", data: pairs.map(p => p[1]), backgroundColor: PALETTE.morado, borderRadius: 4 }],
-      onClick,
     }));
   }
 
@@ -296,7 +316,6 @@ QA.charts = (function () {
     renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(auditoriasSoloTipo), handlers.onAuditoriasPorCierre);
     renderHallazgosEstado(QA.kpiEngine.hallazgosPorEstado(findings), handlers.onHallazgosEstado);
     renderHallazgosClasificacion(QA.kpiEngine.hallazgosPorClasificacion(findings), handlers.onHallazgosClasificacion);
-    renderHallazgosProceso(QA.kpiEngine.hallazgosPorProceso(findings), handlers.onHallazgosProceso);
     renderHallazgosTendencia(QA.kpiEngine.hallazgosTendenciaMensual(findings), handlers.onHallazgosTendencia);
 
     // Auditorías (sección propia): solo tipo AUDITORIA
@@ -306,7 +325,9 @@ QA.charts = (function () {
 
     // Inspecciones (sección propia): solo tipo INSPECCION
     renderPorClasificacion(QA.kpiEngine.porClasificacion(inspeccionesSoloTipo), "chartInspClasificacion", handlers.onInspeccionesClasificacion);
-    renderPorUbicacion(QA.kpiEngine.porUbicacion(inspeccionesSoloTipo), "chartInspUbicacion", handlers.onInspeccionesUbicacion);
+    renderAvanceGauge(QA.kpiEngine.avanceEsperadoVsReal(inspeccionesSoloTipo), "chartInspAvanceGauge");
+    renderAvanceGauge(QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(inspeccionesSoloTipo), "chartInspAvanceGaugeTotal");
+    renderProgramaPorUbicacion(QA.kpiEngine.programaPorUbicacion(inspeccionesSoloTipo), "chartInspUbicacion", handlers.onInspeccionesUbicacion);
   }
 
   /** Chart.js calcula el tamaño del canvas en el momento de crearlo: si el

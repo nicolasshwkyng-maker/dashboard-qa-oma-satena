@@ -108,7 +108,7 @@
             <div class="qa-chart-card"><div class="qa-chart-title">Auditorías por Cierre</div><div class="qa-chart-canvas-wrap"><canvas id="chartAuditoriasPorCierre"></canvas></div></div>
           </div>
           <div class="qa-chart-grid cols-1">
-            <div class="qa-chart-card"><div class="qa-chart-title">Programadas vs Ejecutadas por Mes</div><div class="qa-chart-canvas-wrap tall"><canvas id="chartProgramaMes"></canvas></div></div>
+            <div class="qa-chart-card"><div class="qa-chart-title">Programadas vs Ejecutadas por Mes <span class="qa-chart-sub">(ejecutadas + no programadas, acumuladas)</span></div><div class="qa-chart-canvas-wrap tall"><canvas id="chartProgramaMes"></canvas></div></div>
           </div>
         </div>
       </div>
@@ -139,8 +139,20 @@
     <section id="secInspecciones" class="qa-section d-none">
       <div class="qa-kpi-grid cols-4" id="kpiGridInspecciones"></div>
       <div class="qa-chart-grid cols-2">
+        <div class="qa-chart-card">
+          <div class="qa-chart-title">Brecha de Ejecución — Corte a Hoy</div>
+          <div class="qa-chart-canvas-wrap" style="height:110px"><canvas id="chartInspAvanceGauge"></canvas></div>
+          <div id="brechaInspTexto" class="qa-brecha-texto"></div>
+        </div>
+        <div class="qa-chart-card">
+          <div class="qa-chart-title">Brecha con No Programadas — Corte a Hoy</div>
+          <div class="qa-chart-canvas-wrap" style="height:110px"><canvas id="chartInspAvanceGaugeTotal"></canvas></div>
+          <div id="brechaInspTextoTotal" class="qa-brecha-texto"></div>
+        </div>
+      </div>
+      <div class="qa-chart-grid cols-2">
         <div class="qa-chart-card"><div class="qa-chart-title">Por Clasificación</div><div class="qa-chart-canvas-wrap"><canvas id="chartInspClasificacion"></canvas></div></div>
-        <div class="qa-chart-card"><div class="qa-chart-title">Por Ubicación</div><div class="qa-chart-canvas-wrap"><canvas id="chartInspUbicacion"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Programadas vs Ejecutadas por Ubicación</div><div class="qa-chart-canvas-wrap"><canvas id="chartInspUbicacion"></canvas></div></div>
       </div>
       <div class="qa-table-card">
         <div class="qa-table-card-header">
@@ -157,10 +169,9 @@
     <!-- ============================= HALLAZGOS ============================= -->
     <section id="secHallazgos" class="qa-section d-none">
       <div class="qa-kpi-grid cols-4" id="kpiGridHallazgos"></div>
-      <div class="qa-chart-grid cols-3">
+      <div class="qa-chart-grid cols-2">
         <div class="qa-chart-card"><div class="qa-chart-title">Por Estado</div><div class="qa-chart-canvas-wrap"><canvas id="chartHallazgosEstado"></canvas></div></div>
         <div class="qa-chart-card"><div class="qa-chart-title">Por Clasificación (causa raíz)</div><div class="qa-chart-canvas-wrap"><canvas id="chartHallazgosClasificacion"></canvas></div></div>
-        <div class="qa-chart-card"><div class="qa-chart-title">Por Proceso</div><div class="qa-chart-canvas-wrap"><canvas id="chartHallazgosProceso"></canvas></div></div>
       </div>
       <div class="qa-chart-grid cols-1">
         <div class="qa-chart-card"><div class="qa-chart-title">Tendencia Mensual — Emitidos vs Cerrados</div><div class="qa-chart-canvas-wrap tall"><canvas id="chartHallazgosTendencia"></canvas></div></div>

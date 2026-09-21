@@ -19,11 +19,12 @@ QA.tables = (function () {
   const ESTADO_LABELS = {
     POR_EJECUTAR: "Por Ejecutar", EJECUTADA: "Ejecutada", NO_EJECUTADA: "No Ejecutada", CANCELADA: "Cancelada",
   };
+  const P = QA.config.PALETTE; // paleta central (data.js)
   const ESTADO_COLORS = {
-    POR_EJECUTAR: "#185FA5", EJECUTADA: "#3B6D11", NO_EJECUTADA: "#A32D2D", CANCELADA: "#5F5E5A",
+    POR_EJECUTAR: P.acero, EJECUTADA: P.verde, NO_EJECUTADA: P.rojo, CANCELADA: P.gris,
   };
   const CIERRE_LABELS = { CERRADO: "Cerrada", ABIERTO: "Abierta", CIERRE_PARCIAL: "Cierre Parcial" };
-  const CIERRE_COLORS = { CERRADO: "#3B6D11", ABIERTO: "#A32D2D", CIERRE_PARCIAL: "#B5541C" };
+  const CIERRE_COLORS = { CERRADO: P.verde, ABIERTO: P.rojo, CIERRE_PARCIAL: P.amarilloD };
 
   function badge(text, color, bg) {
     return `<span class="qa-badge" style="color:${color};background:${bg || color + "1a"}">${u.escapeHtml(text)}</span>`;
@@ -31,17 +32,17 @@ QA.tables = (function () {
 
   function estadoBadgeHtml(estadoCalculado) {
     const label = ESTADO_LABELS[estadoCalculado] || estadoCalculado || "—";
-    const color = ESTADO_COLORS[estadoCalculado] || "#5F5E5A";
+    const color = ESTADO_COLORS[estadoCalculado] || P.gris;
     return badge(label, color);
   }
 
   function cierreBadgeHtml(cierreRollup) {
     if (!cierreRollup) return u.escapeHtml("—");
-    return badge(CIERRE_LABELS[cierreRollup] || cierreRollup, CIERRE_COLORS[cierreRollup] || "#5F5E5A");
+    return badge(CIERRE_LABELS[cierreRollup] || cierreRollup, CIERRE_COLORS[cierreRollup] || P.gris);
   }
 
   function categoriaBadgeHtml(clasificacionCanonica, label) {
-    const colors = (QA.config.CATEGORY_COLORS && QA.config.CATEGORY_COLORS[clasificacionCanonica]) || ["#5F5E5A", "#F1EFE8"];
+    const colors = (QA.config.CATEGORY_COLORS && QA.config.CATEGORY_COLORS[clasificacionCanonica]) || [P.gris, P.grisL];
     return badge(label || clasificacionCanonica || "—", colors[0], colors[1]);
   }
 
@@ -58,7 +59,7 @@ QA.tables = (function () {
       { data: "fechaProgramada", title: "Fecha Programada", render: (v) => u.formatDate(v), type: "date" },
       { data: "fechaEjecucionReal", title: "Fecha Ejecución", render: (v) => u.formatDate(v) },
       { data: "estadoCalculado", title: "Estatus", render: (v) => estadoBadgeHtml(v) },
-      { data: null, title: "Programación", render: (row) => row.esExtraordinaria ? badge("No Programada", "#534AB7") : badge("Programada", "#185FA5") },
+      { data: null, title: "Programación", render: (row) => row.esExtraordinaria ? badge("No Programada", P.amarilloD) : badge("Programada", P.acero) },
       { data: "cierreRollup", title: "Cierre (hallazgos)", render: (v) => cierreBadgeHtml(v) },
       { data: "auditorResponsable", title: "Responsable", render: (v) => u.escapeHtml(v || "—") },
     ];
@@ -116,10 +117,10 @@ QA.tables = (function () {
   function estadoEfectivoHallazgo(f) { return f.estadoHallazgo || null; }
 
   function tipoHallazgoBadge(condicion) {
-    if (condicion === "NC") return badge("No Conformidad", "#A32D2D");
-    if (condicion === "OB") return badge("Observación", "#BA7517");
-    if (condicion === "N/A") return badge("Sin hallazgo (cerrada)", "#5F5E5A", "#F1EFE8");
-    return badge("Pendiente de determinar", "#185FA5", "#E6F1FB");
+    if (condicion === "NC") return badge("No Conformidad", P.rojo);
+    if (condicion === "OB") return badge("Observación", P.amarilloD);
+    if (condicion === "N/A") return badge("Sin hallazgo (cerrada)", P.gris, P.grisL);
+    return badge("Pendiente de determinar", P.acero, P.aceroL);
   }
 
   /** Fila expandible con la descripción completa del hallazgo (no cabe como
@@ -141,7 +142,7 @@ QA.tables = (function () {
       { data: "auditado", title: "Auditoría", render: (v) => u.escapeHtml(v || "—") },
       { data: null, title: "Código", render: (row) => u.escapeHtml(`${row.idAuditoria}-${row.numeroReporte}`) },
       { data: "condicion", title: "Tipo", render: (v) => tipoHallazgoBadge(v) },
-      { data: null, title: "Estado", render: (row) => { const e = estadoEfectivoHallazgo(row); return e === "Cerrado" ? badge("Cerrado", "#3B6D11") : e === "Abierto" ? badge("Abierto", "#A32D2D") : e === "Cierre Parcial" ? badge("Cierre Parcial", "#B5541C") : u.escapeHtml("—"); } },
+      { data: null, title: "Estado", render: (row) => { const e = estadoEfectivoHallazgo(row); return e === "Cerrado" ? badge("Cerrado", P.verde) : e === "Abierto" ? badge("Abierto", P.rojo) : e === "Cierre Parcial" ? badge("Cierre Parcial", P.amarilloD) : u.escapeHtml("—"); } },
       { data: "auditorLider", title: "Responsable", render: (v) => u.escapeHtml(v || "—") },
       { data: "fechaInicio", title: "Fecha", render: (v) => u.formatDate(v), type: "date" },
       { data: "fechaCierreReporte", title: "Fecha de Cierre", render: (v) => u.formatDate(v), type: "date" },

@@ -154,25 +154,24 @@ QA.kpiEngine = (function () {
   }
 
   /* ------------------------------------------------------------------ *
-   * Programa: programadas vs ejecutadas por mes (+ extraordinarias)
+   * Programa: programadas vs ejecutadas por mes (+ no programadas)
    * ------------------------------------------------------------------ */
-  /** Se ubica cada auditoría por "fechaReferencia" (ver
-   * statusEngine#computeFechaReferencia): columna J "Ejecucion Reprogramada"
-   * si tiene valor, si no columna I "Fecha Proyectada" — regla del usuario,
-   * aplica igual a programadas y extraordinarias. Sin ninguna de las 2, la
-   * auditoría no aparece en el gráfico mensual. */
+  /** Compara el PLAN original contra lo realmente ejecutado, mes a mes:
+   *   - programadas: se ubican por su fecha proyectada ORIGINAL
+   *     (fechaProgramada, columna I) — una auditoría planeada para febrero
+   *     cuenta como programada de febrero aunque se haya ejecutado en marzo.
+   *   - ejecutadas / extraordinarias (no programadas ejecutadas): se ubican
+   *     por su fecha de referencia (statusEngine#computeFechaReferencia:
+   *     ejecución real si existe, si no la proyectada).
+   * Las 2 últimas se apilan en una sola barra en el gráfico (total
+   * ejecutado del mes) contra la barra de programadas. */
   function programaPorMes(audits) {
     const buckets = Array.from({ length: 12 }, () => ({ programadas: 0, ejecutadas: 0, extraordinarias: 0 }));
     audits.forEach((a) => {
-      const fecha = a.fechaReferencia;
-      if (!fecha) return;
-      const m = fecha.getMonth();
-      if (a.esExtraordinaria) {
-        if (a.estadoCalculado === EST.EJECUTADA) buckets[m].extraordinarias++;
-        return;
-      }
-      buckets[m].programadas++;
-      if (a.estadoCalculado === EST.EJECUTADA) buckets[m].ejecutadas++;
+      if (!a.esExtraordinaria && a.fechaProgramada) buckets[a.fechaProgramada.getMonth()].programadas++;
+      if (a.estadoCalculado !== EST.EJECUTADA || !a.fechaReferencia) return;
+      const m = a.fechaReferencia.getMonth();
+      if (a.esExtraordinaria) buckets[m].extraordinarias++; else buckets[m].ejecutadas++;
     });
     return {
       labels: u.MONTH_ABBR,
@@ -188,13 +187,9 @@ QA.kpiEngine = (function () {
    * "programadas" | "ejecutadas" | "extraordinarias". */
   function auditoriasDeMes(audits, monthIndex, categoria) {
     return audits.filter((a) => {
-      const fecha = a.fechaReferencia;
-      if (!fecha || fecha.getMonth() !== monthIndex) return false;
-      if (a.esExtraordinaria) return categoria === "extraordinarias" && a.estadoCalculado === EST.EJECUTADA;
-      if (categoria === "extraordinarias") return false;
-      if (categoria === "programadas") return true;
-      if (categoria === "ejecutadas") return a.estadoCalculado === EST.EJECUTADA;
-      return false;
+      if (categoria === "programadas") return !a.esExtraordinaria && !!a.fechaProgramada && a.fechaProgramada.getMonth() === monthIndex;
+      if (a.estadoCalculado !== EST.EJECUTADA || !a.fechaReferencia || a.fechaReferencia.getMonth() !== monthIndex) return false;
+      return categoria === "extraordinarias" ? a.esExtraordinaria : (categoria === "ejecutadas" && !a.esExtraordinaria);
     });
   }
 
@@ -218,7 +213,6 @@ QA.kpiEngine = (function () {
   const keyModalidad = a => a.modalidad;
   const keyUbicacion = a => a.ciudad;
   const keyHallazgoClasificacion = f => f.clasificacionReporte;
-  const keyHallazgoProceso = f => f.procesoReporte;
 
   function porClasificacion(audits) { return countBy(audits, keyClasificacion); }
   function porModalidad(audits) { return countBy(audits, keyModalidad); }
@@ -229,6 +223,39 @@ QA.kpiEngine = (function () {
   function faaAuditorias(audits) {
     const cats = QA.config.FAA_SELF_EVAL.categories.map(c => u.normalize(c.cronogramaAuditadoMatch));
     return audits.filter((a) => { const n = u.normalize(a.auditado); return cats.some(c => n.includes(c)); });
+  }
+
+  /** Programadas vs ejecutadas por ubicación (ciudad): mismas 3 series que
+   * programaPorMes — programadas (todas las programadas del lugar),
+   * ejecutadas (programadas ya ejecutadas) y extraordinarias (no
+   * programadas ejecutadas). Ordenado de mayor a menor actividad. */
+  function programaPorUbicacion(audits) {
+    const map = new Map();
+    audits.forEach((a) => {
+      const key = keyUbicacion(a) || "No especificado";
+      if (!map.has(key)) map.set(key, { programadas: 0, ejecutadas: 0, extraordinarias: 0 });
+      const b = map.get(key);
+      const ejecutada = a.estadoCalculado === EST.EJECUTADA;
+      if (!a.esExtraordinaria) { b.programadas++; if (ejecutada) b.ejecutadas++; }
+      else if (ejecutada) b.extraordinarias++;
+    });
+    const rows = [...map.entries()].sort((x, y) =>
+      (y[1].programadas + y[1].ejecutadas + y[1].extraordinarias) - (x[1].programadas + x[1].ejecutadas + x[1].extraordinarias));
+    return {
+      labels: rows.map(r => r[0]),
+      programadas: rows.map(r => r[1].programadas),
+      ejecutadas: rows.map(r => r[1].ejecutadas),
+      extraordinarias: rows.map(r => r[1].extraordinarias),
+    };
+  }
+  /** Drill-down de una barra de programaPorUbicacion. `categoria` ∈
+   * "programadas" | "ejecutadas" | "extraordinarias". */
+  function auditoriasDeUbicacion(audits, label, categoria) {
+    return itemsWhere(audits, keyUbicacion, label).filter((a) => {
+      if (categoria === "programadas") return !a.esExtraordinaria;
+      if (a.estadoCalculado !== EST.EJECUTADA) return false;
+      return categoria === "extraordinarias" ? a.esExtraordinaria : (categoria === "ejecutadas" && !a.esExtraordinaria);
+    });
   }
 
   function auditoriasPorClasificacionItems(audits, label) { return itemsWhere(audits, keyClasificacion, label); }
@@ -271,10 +298,6 @@ QA.kpiEngine = (function () {
     return countBy(hallazgosReales(findings), keyHallazgoClasificacion);
   }
   function hallazgosPorClasificacionItems(findings, label) { return itemsWhere(hallazgosReales(findings), keyHallazgoClasificacion, label); }
-  function hallazgosPorProceso(findings) {
-    return countBy(hallazgosReales(findings), keyHallazgoProceso);
-  }
-  function hallazgosPorProcesoItems(findings, label) { return itemsWhere(hallazgosReales(findings), keyHallazgoProceso, label); }
   /** Emitidos (por fecha de notificación) vs cerrados (por fecha de cierre de reporte), por mes. */
   function hallazgosTendenciaMensual(findings) {
     findings = hallazgosReales(findings);
@@ -302,12 +325,12 @@ QA.kpiEngine = (function () {
 
   return {
     computeKpis, avanceEsperadoVsReal, avanceEsperadoVsRealConNoProgramadas, programaPorMes, auditoriasDeMes,
-    porClasificacion, porModalidad, porUbicacion, faaAuditorias, porTipoRegistro,
+    porClasificacion, porModalidad, porUbicacion, programaPorUbicacion, auditoriasDeUbicacion, faaAuditorias, porTipoRegistro,
     auditoriasPorClasificacionItems, auditoriasPorModalidadItems, auditoriasPorUbicacionItems,
     estadoPrograma, estadoProgramaItems, auditoriasPorCierre, auditoriasPorCierreItems,
     hallazgosReales,
     hallazgosPorEstado, hallazgosPorEstadoItems, hallazgosPorClasificacion, hallazgosPorClasificacionItems,
-    hallazgosPorProceso, hallazgosPorProcesoItems, hallazgosTendenciaMensual, hallazgosTendenciaItems,
+    hallazgosTendenciaMensual, hallazgosTendenciaItems,
     hallazgosEmitidosVsCerrados,
   };
 })();

@@ -372,21 +372,33 @@ QA.config = {
   },
 
   /* ------------------------------------------------------------------ *
-   * 6.5 Paleta de colores por categoría — se reutiliza EXACTAMENTE la
-   * paleta ya usada por las otras herramientas del ecosistema QA_MRO
-   * (Buscador de Aliases / Guía Operativa) para que las tres apps se
-   * vean como parte de un mismo sistema. [texto, fondo claro]
+   * 6.5 Paleta de colores. Los 6 colores base son los de la identidad
+   * visual del dashboard (blanco, azul marino, amarillo, rojo oscuro,
+   * negro y azul acero); el resto son tonos/tintes derivados de ellos (más
+   * un verde apagado para "ejecutada/cerrada", que la paleta base no
+   * tiene). styles.css repite estos mismos valores como variables CSS
+   * (:root) — si se cambia uno, cambiar el otro.
+   * CATEGORY_COLORS: [texto, fondo claro] por categoría de clasificación.
    * ------------------------------------------------------------------ */
+  PALETTE: {
+    // Base
+    blanco: "#FFFFFF", azul: "#1A2F49", acero: "#2E5F7F", amarillo: "#EDD656", rojo: "#912B2A", negro: "#000000",
+    // Derivados
+    azulL: "#E3E9F0", aceroL: "#DCE8F0", amarilloL: "#FBF6D2", amarilloD: "#8C7A12",
+    rojoL: "#F4E2E2", verde: "#367857", verdeL: "#E0EEE7",
+    gris: "#5C6B7A", grisL: "#ECEFF3", borde: "#D3D9E0",
+  },
+
   CATEGORY_COLORS: {
-    OMA: ["#185FA5", "#E6F1FB"],
-    OMA_EXT: ["#0F6E56", "#E1F5EE"],
-    PROVEEDOR: ["#534AB7", "#EEEDFE"],
-    LABORATORIO_CALIBRACION: ["#BA7517", "#FAEEDA"],
-    MANTENIMIENTO_ETAA: ["#993556", "#FBEAF0"],
-    CIAC: ["#3B6D11", "#EAF3DE"],
-    AREA_INTERNA: ["#5F5E5A", "#F1EFE8"],
-    AUMENTO_CAPACIDADES: ["#B5541C", "#FBEADD"],
-    INSPECCION: ["#1D7A9E", "#DFF3F9"],
+    OMA: ["#2E5F7F", "#DCE8F0"],
+    OMA_EXT: ["#1A2F49", "#E3E9F0"],
+    PROVEEDOR: ["#367857", "#E0EEE7"],
+    LABORATORIO_CALIBRACION: ["#8C7A12", "#FBF6D2"],
+    MANTENIMIENTO_ETAA: ["#912B2A", "#F4E2E2"],
+    CIAC: ["#4A6785", "#E6EBF1"],
+    AREA_INTERNA: ["#5C6B7A", "#ECEFF3"],
+    AUMENTO_CAPACIDADES: ["#A8641F", "#F7EBDD"],
+    INSPECCION: ["#2A7F8E", "#DDF0F3"],
   },
 
   /* ------------------------------------------------------------------ *

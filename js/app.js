@@ -216,20 +216,20 @@
         kpiCardHtml("Extraordinarios (No Programados)", k.extraordinarias, `${k.extraordinariasEjecutadas} ejecutados`, "extraordinarias", "audits"),
       ].join("")),
       kpiGroupHtml("Ejecución", [
-        kpiCardHtml("Ejecutados", k.ejecutadas, "Incluye extraordinarios ejecutados", "ejecutadas", "audits", "teal"),
-        kpiCardHtml("Ejecutados Programados", k.ejecutadasProgramadas, "Ejecutados que SÍ estaban en el cronograma", "ejecutadasProgramadas", "audits", "teal"),
-        kpiCardHtml("Por Ejecutar", k.porEjecutar, null, "porEjecutar", "audits", "teal"),
-        kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits", "teal"),
-        kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits", "teal"),
+        kpiCardHtml("Ejecutados", k.ejecutadas, "Incluye extraordinarios ejecutados", "ejecutadas", "audits", "acero"),
+        kpiCardHtml("Ejecutados Programados", k.ejecutadasProgramadas, "Ejecutados que SÍ estaban en el cronograma", "ejecutadasProgramadas", "audits", "acero"),
+        kpiCardHtml("Por Ejecutar", k.porEjecutar, null, "porEjecutar", "audits", "acero"),
+        kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits", "acero"),
+        kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits", "acero"),
       ].join("")),
       kpiGroupHtml("Cumplimiento", [
-        kpiCardHtml("% Cumplimiento Cronograma Original", k.cumplimientoOriginalPct + "%", "Ejecutados programados / Total programado (nunca > 100%)", "ejecutadasProgramadas", "audits", "morado"),
-        kpiCardHtml("% Avance Total del Programa", k.avanceTotalPct + "%", "Incluye extraordinarios ejecutados — puede superar 100%", "ejecutadas", "audits", "morado"),
+        kpiCardHtml("% Cumplimiento Cronograma Original", k.cumplimientoOriginalPct + "%", "Ejecutados programados / Total programado (nunca > 100%)", "ejecutadasProgramadas", "audits", "amarillo"),
+        kpiCardHtml("% Avance Total del Programa", k.avanceTotalPct + "%", "Incluye extraordinarios ejecutados — puede superar 100%", "ejecutadas", "audits", "amarillo"),
       ].join("")),
       kpiGroupHtml("Cierre de Auditorías Ejecutadas", [
-        kpiCardHtml("Cerradas", k.auditoriasCerradas, "Todos sus hallazgos cerrados", "auditoriasCerradas", "audits", "amber"),
-        kpiCardHtml("Abiertas", k.auditoriasAbiertas, "Sin hallazgos, o con hallazgos abiertos", "auditoriasAbiertas", "audits", "amber"),
-        kpiCardHtml("Cierre Parcial", k.auditoriasCierreParcial, "Mezcla de hallazgos abiertos/cerrados", "auditoriasCierreParcial", "audits", "amber"),
+        kpiCardHtml("Cerradas", k.auditoriasCerradas, "Todos sus hallazgos cerrados", "auditoriasCerradas", "audits", "verde"),
+        kpiCardHtml("Abiertas", k.auditoriasAbiertas, "Sin hallazgos, o con hallazgos abiertos", "auditoriasAbiertas", "audits", "verde"),
+        kpiCardHtml("Cierre Parcial", k.auditoriasCierreParcial, "Mezcla de hallazgos abiertos/cerrados", "auditoriasCierreParcial", "audits", "verde"),
       ].join("")),
       kpiGroupHtml("Hallazgos", [
         kpiCardHtml("Total de Hallazgos", k.hallazgosTotal, null, "hallazgosTotal", "findings", "rojo"),
@@ -238,7 +238,7 @@
         kpiCardHtml("Cierre Parcial", k.hallazgosCierreParcial, null, "hallazgosCierreParcial", "findings", "rojo"),
       ].join("")),
       kpiGroupHtml("Alertas", [
-        kpiCardHtml("Próximos 30 Días", k.proximos30Dias, "Por ejecutar con fecha cercana", "proximos30Dias", "audits", "gris"),
+        kpiCardHtml("Próximos 30 Días", k.proximos30Dias, "Por ejecutar con fecha cercana", "proximos30Dias", "audits", "negro"),
       ].join("")),
     ].join("");
 
@@ -545,7 +545,6 @@
       onAuditoriasPorCierre: (label) => openKpiModal(`Auditorías por Cierre — ${label}`, K.auditoriasPorCierreItems(auditoriasSoloTipo, label), "audits"),
       onHallazgosEstado: (label) => openKpiModal(`Hallazgos — ${label}`, K.hallazgosPorEstadoItems(findings, label), "findings"),
       onHallazgosClasificacion: (label) => openKpiModal(`Hallazgos por Causa Raíz — ${label}`, K.hallazgosPorClasificacionItems(findings, label), "findings"),
-      onHallazgosProceso: (label) => openKpiModal(`Hallazgos por Proceso — ${label}`, K.hallazgosPorProcesoItems(findings, label), "findings"),
       onHallazgosTendencia: (label, datasetLabel, monthIndex) => {
         const serie = datasetLabel === "Cerrados" ? "cerrados" : "emitidos";
         openKpiModal(`Hallazgos ${datasetLabel} — ${u.MONTH_NAMES[monthIndex]}`, K.hallazgosTendenciaItems(findings, monthIndex, serie), "findings");
@@ -554,7 +553,12 @@
       onAuditoriasModalidad: (label) => openKpiModal(`Auditorías — ${label}`, K.auditoriasPorModalidadItems(auditoriasSoloTipo, label), "audits"),
       onAuditoriasUbicacion: (label) => openKpiModal(`Auditorías — ${label}`, K.auditoriasPorUbicacionItems(auditoriasSoloTipo, label), "audits"),
       onInspeccionesClasificacion: (label) => openKpiModal(`Inspecciones — ${label}`, K.auditoriasPorClasificacionItems(inspeccionesSoloTipo, label), "audits"),
-      onInspeccionesUbicacion: (label) => openKpiModal(`Inspecciones — ${label}`, K.auditoriasPorUbicacionItems(inspeccionesSoloTipo, label), "audits"),
+      onInspeccionesUbicacion: (label, datasetLabel) => {
+        const categoriaMap = { "Programadas": "programadas", "Ejecutadas": "ejecutadas", "No Programadas Ejecutadas": "extraordinarias" };
+        const categoria = categoriaMap[datasetLabel];
+        if (!categoria) return;
+        openKpiModal(`Inspecciones ${datasetLabel} — ${label}`, K.auditoriasDeUbicacion(inspeccionesSoloTipo, label, categoria), "audits");
+      },
     };
   }
 
@@ -578,6 +582,8 @@
       buildChartDrilldownHandlers(auditoriasSoloTipo, inspeccionesSoloTipo, findings));
     renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsReal(auditoriasSoloTipo));
     renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(auditoriasSoloTipo), "brechaResumenTextoTotal", "Avance Real + No Programadas");
+    renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsReal(inspeccionesSoloTipo), "brechaInspTexto");
+    renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(inspeccionesSoloTipo), "brechaInspTextoTotal", "Avance Real + No Programadas");
     renderSubsectionKpis("kpiGridPrograma", auditoriasSoloTipo);
     renderSubsectionKpis("kpiGridInspecciones", inspeccionesSoloTipo);
     QA.tables.updateAuditoriasTable(auditoriasSoloTipo, openAuditoriaForm);
