@@ -88,13 +88,20 @@ QA.utils = (function () {
     if (value === null || value === undefined || value === "") return null;
     if (value instanceof Date && !isNaN(value.getTime())) return value;
     if (typeof value === "number") {
-      // Fecha serial de Excel (días desde 1899-12-30)
-      const d = new Date(Math.round((value - 25569) * 86400 * 1000));
+      // Fecha serial de Excel (días desde 1899-12-30), como fecha LOCAL: en
+      // UTC, en zonas al oeste de Greenwich (Colombia) se vería un día antes.
+      const d = new Date(1899, 11, 30 + Math.floor(value));
       return isNaN(d.getTime()) ? null : d;
     }
     if (typeof value === "string") {
       const s = value.trim();
       if (!s || /^n\/?a$/i.test(s) || /no programada/i.test(s)) return null;
+      // Fechas en texto sin hora, como fecha LOCAL (new Date("2026-03-09")
+      // las lee en UTC y se corren un día atrás en Colombia).
+      let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+      m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/); // día/mes/año
+      if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
       const d = new Date(s);
       if (!isNaN(d.getTime())) return d;
     }
