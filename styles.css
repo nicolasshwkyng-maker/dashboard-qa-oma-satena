@@ -162,6 +162,15 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .qa-section { animation: qaFadeIn .18s ease; }
 @keyframes qaFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+/* Encabezado de bloque dentro del Resumen Ejecutivo (Auditorías / Inspecciones):
+   deja explícito que son conjuntos separados, cada uno con sus propias cifras. */
+.qa-band {
+  margin: 4px 0 14px; padding: 7px 14px; background: var(--azul); color: #fff;
+  border-left: 5px solid var(--amarillo); border-radius: 6px;
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+}
+.qa-resumen-columns + .qa-band { margin-top: 30px; }
+
 /* KPI cards */
 .qa-kpi-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px;

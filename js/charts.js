@@ -98,8 +98,8 @@ QA.charts = (function () {
           tooltip: tooltipFooter ? { callbacks: { footer: tooltipFooter } } : {},
         },
         scales: {
-          x: { stacked: !!stacked, grid: { display: !horizontal }, ticks: { autoSkip: false } },
-          y: { stacked: !!stacked, grid: { display: horizontal, color: PALETTE.grisL }, beginAtZero: true },
+          x: { stacked: !!stacked, grid: { display: !horizontal }, ticks: { autoSkip: false, precision: 0 } },
+          y: { stacked: !!stacked, grid: { display: horizontal, color: PALETTE.grisL }, beginAtZero: true, ticks: { precision: 0 } },
         },
       }, onClick),
     };
@@ -211,8 +211,10 @@ QA.charts = (function () {
     });
   }
 
-  function renderProgramaPorMes(d, onClick) {
-    getOrCreate("chartProgramaMes", programadoVsEjecutadoConfig(d, false, onClick));
+  /** `canvasId` parametrizable: el mismo gráfico se usa para Auditorías
+   * (Resumen), Inspecciones (Resumen) y la pestaña Inspecciones. */
+  function renderProgramaPorMes(d, onClick, canvasId) {
+    getOrCreate(canvasId || "chartProgramaMes", programadoVsEjecutadoConfig(d, false, onClick));
   }
 
   /** Inspecciones: programadas vs ejecutadas por ubicación. */
@@ -325,8 +327,14 @@ QA.charts = (function () {
 
     // Inspecciones (sección propia): solo tipo INSPECCION
     renderPorClasificacion(QA.kpiEngine.porClasificacion(inspeccionesSoloTipo), "chartInspClasificacion", handlers.onInspeccionesClasificacion);
-    renderAvanceGauge(QA.kpiEngine.avanceEsperadoVsReal(inspeccionesSoloTipo), "chartInspAvanceGauge");
-    renderAvanceGauge(QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(inspeccionesSoloTipo), "chartInspAvanceGaugeTotal");
+    // Mismos datos en 2 lugares: pestaña Inspecciones y bloque "Inspecciones"
+    // del Resumen Ejecutivo (canvas distintos, ids únicos).
+    const gInsp = QA.kpiEngine.avanceEsperadoVsReal(inspeccionesSoloTipo);
+    const gInspTotal = QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(inspeccionesSoloTipo);
+    ["chartInspAvanceGauge", "chartResInspGauge"].forEach((id) => renderAvanceGauge(gInsp, id));
+    ["chartInspAvanceGaugeTotal", "chartResInspGaugeTotal"].forEach((id) => renderAvanceGauge(gInspTotal, id));
+    const mesInsp = QA.kpiEngine.programaPorMes(inspeccionesSoloTipo);
+    ["chartInspMes", "chartResInspMes"].forEach((id) => renderProgramaPorMes(mesInsp, handlers.onInspeccionesMes, id));
     renderProgramaPorUbicacion(QA.kpiEngine.programaPorUbicacion(inspeccionesSoloTipo), "chartInspUbicacion", handlers.onInspeccionesUbicacion);
   }
 

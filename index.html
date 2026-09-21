@@ -88,6 +88,7 @@
 
     <!-- ============================= RESUMEN EJECUTIVO ============================= -->
     <section id="secResumen" class="qa-section">
+      <div class="qa-band">Auditorías</div>
       <div class="qa-resumen-columns">
         <div class="qa-resumen-col-kpis" id="kpiGridResumen"></div>
         <div class="qa-resumen-col-charts">
@@ -109,6 +110,28 @@
           </div>
           <div class="qa-chart-grid cols-1">
             <div class="qa-chart-card"><div class="qa-chart-title">Programadas vs Ejecutadas por Mes <span class="qa-chart-sub">(ejecutadas + no programadas, acumuladas)</span></div><div class="qa-chart-canvas-wrap tall"><canvas id="chartProgramaMes"></canvas></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="qa-band">Inspecciones</div>
+      <div class="qa-resumen-columns">
+        <div class="qa-resumen-col-kpis" id="kpiGridResumenInsp"></div>
+        <div class="qa-resumen-col-charts">
+          <div class="qa-chart-grid cols-2">
+            <div class="qa-chart-card">
+              <div class="qa-chart-title">Brecha de Ejecución — Corte a Hoy</div>
+              <div class="qa-chart-canvas-wrap" style="height:110px"><canvas id="chartResInspGauge"></canvas></div>
+              <div id="brechaResInspTexto" class="qa-brecha-texto"></div>
+            </div>
+            <div class="qa-chart-card">
+              <div class="qa-chart-title">Brecha con No Programadas — Corte a Hoy</div>
+              <div class="qa-chart-canvas-wrap" style="height:110px"><canvas id="chartResInspGaugeTotal"></canvas></div>
+              <div id="brechaResInspTextoTotal" class="qa-brecha-texto"></div>
+            </div>
+          </div>
+          <div class="qa-chart-grid cols-1">
+            <div class="qa-chart-card"><div class="qa-chart-title">Programadas vs Ejecutadas por Mes <span class="qa-chart-sub">(ejecutadas + no programadas, acumuladas)</span></div><div class="qa-chart-canvas-wrap tall"><canvas id="chartResInspMes"></canvas></div></div>
           </div>
         </div>
       </div>
@@ -149,6 +172,9 @@
           <div class="qa-chart-canvas-wrap" style="height:110px"><canvas id="chartInspAvanceGaugeTotal"></canvas></div>
           <div id="brechaInspTextoTotal" class="qa-brecha-texto"></div>
         </div>
+      </div>
+      <div class="qa-chart-grid cols-1">
+        <div class="qa-chart-card"><div class="qa-chart-title">Programadas vs Ejecutadas por Mes <span class="qa-chart-sub">(ejecutadas + no programadas, acumuladas)</span></div><div class="qa-chart-canvas-wrap tall"><canvas id="chartInspMes"></canvas></div></div>
       </div>
       <div class="qa-chart-grid cols-2">
         <div class="qa-chart-card"><div class="qa-chart-title">Por Clasificación</div><div class="qa-chart-canvas-wrap"><canvas id="chartInspClasificacion"></canvas></div></div>

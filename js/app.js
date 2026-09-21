@@ -20,7 +20,7 @@
 
   const state = {
     allAudits: [], allFindings: [],
-    loaded: false, lastKpis: null,
+    loaded: false, lastKpis: null, lastKpisInsp: null,
   };
   let stopRealtime = null;
 
@@ -250,6 +250,33 @@
     ].join("");
   }
 
+  /** Bloque "Inspecciones" del Resumen Ejecutivo: mismas tarjetas de
+   * Programa / Ejecución / Cumplimiento / Alertas que Auditorías, pero
+   * calculadas SOLO con inspecciones (sin mezclar con las auditorías). */
+  function renderKpisInspecciones(k) {
+    document.getElementById("kpiGridResumenInsp").innerHTML = [
+      kpiGroupHtml("Programa", [
+        kpiCardHtml("Total de Inspecciones", k.totalAuditorias, `${k.programadas} programadas + ${k.extraordinarias} no programadas`, "totalAuditorias", "audits"),
+        kpiCardHtml("Programadas", k.programadas, null, "programadas", "audits"),
+        kpiCardHtml("No Programadas", k.extraordinarias, `${k.extraordinariasEjecutadas} ejecutadas`, "extraordinarias", "audits"),
+      ].join("")),
+      kpiGroupHtml("Ejecución", [
+        kpiCardHtml("Ejecutadas", k.ejecutadas, "Incluye no programadas ejecutadas", "ejecutadas", "audits", "acero"),
+        kpiCardHtml("Ejecutadas Programadas", k.ejecutadasProgramadas, "Ejecutadas que SÍ estaban en el cronograma", "ejecutadasProgramadas", "audits", "acero"),
+        kpiCardHtml("Por Ejecutar", k.porEjecutar, null, "porEjecutar", "audits", "acero"),
+        kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits", "acero"),
+        kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits", "acero"),
+      ].join("")),
+      kpiGroupHtml("Cumplimiento", [
+        kpiCardHtml("% Cumplimiento Cronograma Original", k.cumplimientoOriginalPct + "%", "Ejecutadas programadas / Total programado (nunca > 100%)", "ejecutadasProgramadas", "audits", "amarillo"),
+        kpiCardHtml("% Avance Total", k.avanceTotalPct + "%", "Incluye no programadas ejecutadas — puede superar 100%", "ejecutadas", "audits", "amarillo"),
+      ].join("")),
+      kpiGroupHtml("Alertas", [
+        kpiCardHtml("Próximos 30 Días", k.proximos30Dias, "Por ejecutar con fecha cercana", "proximos30Dias", "audits", "negro"),
+      ].join("")),
+    ].join("");
+  }
+
   /** Texto bajo el gauge "Brecha de Ejecución": Real / Meta hoy / Brecha,
    * con color según si va adelantado (verde) o atrasado (rojo) el cronograma.
    * `elId`/`realLabel` parametrizables para reusar el mismo render en el
@@ -313,7 +340,8 @@
   }
 
   function wireKpiModals() {
-    ["kpiGridResumen", "kpiGridHallazgos"].forEach((gridId) => {
+    const kpiSource = { kpiGridResumen: "lastKpis", kpiGridHallazgos: "lastKpis", kpiGridResumenInsp: "lastKpisInsp" };
+    Object.keys(kpiSource).forEach((gridId) => {
       const grid = document.getElementById(gridId);
       const trigger = (e) => {
         const card = e.target.closest("[data-kpi-list]");
@@ -322,7 +350,8 @@
         if (e.type === "keydown") e.preventDefault();
         const listKey = card.dataset.kpiList;
         const kind = card.dataset.kpiKind;
-        const items = (state.lastKpis && state.lastKpis.lists && state.lastKpis.lists[listKey]) || [];
+        const kpis = state[kpiSource[gridId]];
+        const items = (kpis && kpis.lists && kpis.lists[listKey]) || [];
         openKpiModal(card.dataset.kpiTitle, items, kind);
       };
       grid.addEventListener("click", trigger);
@@ -541,6 +570,12 @@
         if (!categoria) return;
         openKpiModal(`${datasetLabel} — ${u.MONTH_NAMES[monthIndex]}`, K.auditoriasDeMes(auditoriasSoloTipo, monthIndex, categoria), "audits");
       },
+      onInspeccionesMes: (label, datasetLabel, monthIndex) => {
+        const categoriaMap = { "Programadas": "programadas", "Ejecutadas": "ejecutadas", "No Programadas Ejecutadas": "extraordinarias" };
+        const categoria = categoriaMap[datasetLabel];
+        if (!categoria) return;
+        openKpiModal(`Inspecciones ${datasetLabel} — ${u.MONTH_NAMES[monthIndex]}`, K.auditoriasDeMes(inspeccionesSoloTipo, monthIndex, categoria), "audits");
+      },
       onEstadoPrograma: (label) => openKpiModal(`Estado del Programa — ${label}`, K.estadoProgramaItems(auditoriasSoloTipo, label), "audits"),
       onAuditoriasPorCierre: (label) => openKpiModal(`Auditorías por Cierre — ${label}`, K.auditoriasPorCierreItems(auditoriasSoloTipo, label), "audits"),
       onHallazgosEstado: (label) => openKpiModal(`Hallazgos — ${label}`, K.hallazgosPorEstadoItems(findings, label), "findings"),
@@ -578,12 +613,18 @@
     state.lastKpis = k;
     renderKpis(k);
 
+    const kInsp = QA.kpiEngine.computeKpis(inspeccionesSoloTipo, []);
+    state.lastKpisInsp = kInsp;
+    renderKpisInspecciones(kInsp);
+
     QA.charts.renderAll(audits, findings, auditoriasSoloTipo, inspeccionesSoloTipo,
       buildChartDrilldownHandlers(auditoriasSoloTipo, inspeccionesSoloTipo, findings));
     renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsReal(auditoriasSoloTipo));
     renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(auditoriasSoloTipo), "brechaResumenTextoTotal", "Avance Real + No Programadas");
-    renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsReal(inspeccionesSoloTipo), "brechaInspTexto");
-    renderBrechaResumen(QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(inspeccionesSoloTipo), "brechaInspTextoTotal", "Avance Real + No Programadas");
+    const gInsp = QA.kpiEngine.avanceEsperadoVsReal(inspeccionesSoloTipo);
+    const gInspTotal = QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(inspeccionesSoloTipo);
+    ["brechaInspTexto", "brechaResInspTexto"].forEach((id) => renderBrechaResumen(gInsp, id));
+    ["brechaInspTextoTotal", "brechaResInspTextoTotal"].forEach((id) => renderBrechaResumen(gInspTotal, id, "Avance Real + No Programadas"));
     renderSubsectionKpis("kpiGridPrograma", auditoriasSoloTipo);
     renderSubsectionKpis("kpiGridInspecciones", inspeccionesSoloTipo);
     QA.tables.updateAuditoriasTable(auditoriasSoloTipo, openAuditoriaForm);
