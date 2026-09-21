@@ -82,7 +82,7 @@ exacto de columnas):
 
 | Hoja | Contenido |
 |---|---|
-| `AUDITORIAS_2026` | Una fila por auditoría/inspección: Estatus, Programada/No programada, Tipo (Auditoria QA / Inspección), Clasificación, Auditado, Ciudad, Modalidad, Fecha Proyectada, Ejecución Reprogramada, Servicios. |
+| `AUDITORIAS_2026` | Una fila por auditoría/inspección: Estatus, Programada/No programada, Tipo (Auditoria QA / Inspección), Clasificación, Auditado, Ciudad, Modalidad, Fecha Proyectada, Ejecución Reprogramada, Servicios y, opcional, Cierre. |
 | `HALLAZGOS_2026` | Una fila por hallazgo (NC/OB), vinculado a su auditoría por similitud de nombre (no comparten ID) — condición, estado (Abierto/Cerrado/Cierre Parcial), causa raíz, fechas de notificación/cierre, etc. |
 
 ### ¿Cuándo se considera "ejecutada" una auditoría?
@@ -90,6 +90,19 @@ exacto de columnas):
 Ya no se infiere de nada: viene directo de la columna **Estatus** del
 Excel (`Por Ejecutar` / `Ejecutada` / `No Ejecutada` / `Cancelada`) — ver
 `js/statusEngine.js#computeEstado`.
+
+### ¿Cuándo se considera "cerrada" una auditoría ejecutada?
+
+Solo aplica a auditorías con Estatus = Ejecutada. Se resuelve así
+(`js/statusEngine.js#computeAuditoriaRollup`):
+
+1. Si la columna **Cierre** de `AUDITORIAS_2026` tiene valor (Abierta /
+   Cerrada / Cierre Parcial), ese valor manda. También se edita en el
+   formulario de la auditoría.
+2. Si está vacía, se calcula desde los hallazgos vinculados: todos
+   cerrados = Cerrada, todos abiertos = Abierta, mezcla = Cierre Parcial.
+3. Sin hallazgos = **Cerrada** (no hay nada pendiente). La excepción se
+   marca a mano con Cierre = Abierta.
 
 ### Auditorías extraordinarias (no programadas)
 

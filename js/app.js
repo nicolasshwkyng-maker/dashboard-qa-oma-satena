@@ -227,8 +227,8 @@
         kpiCardHtml("% Avance Total del Programa", k.avanceTotalPct + "%", "Incluye extraordinarios ejecutados — puede superar 100%", "ejecutadas", "audits", "amarillo"),
       ].join("")),
       kpiGroupHtml("Cierre de Auditorías Ejecutadas", [
-        kpiCardHtml("Cerradas", k.auditoriasCerradas, "Todos sus hallazgos cerrados", "auditoriasCerradas", "audits", "verde"),
-        kpiCardHtml("Abiertas", k.auditoriasAbiertas, "Sin hallazgos, o con hallazgos abiertos", "auditoriasAbiertas", "audits", "verde"),
+        kpiCardHtml("Cerradas", k.auditoriasCerradas, "Sin hallazgos o todos cerrados", "auditoriasCerradas", "audits", "verde"),
+        kpiCardHtml("Abiertas", k.auditoriasAbiertas, "Con hallazgos abiertos (o marcadas Abierta)", "auditoriasAbiertas", "audits", "verde"),
         kpiCardHtml("Cierre Parcial", k.auditoriasCierreParcial, "Mezcla de hallazgos abiertos/cerrados", "auditoriasCierreParcial", "audits", "verde"),
       ].join("")),
       kpiGroupHtml("Hallazgos", [
@@ -382,6 +382,7 @@
     document.getElementById("afClasificacionLabel").value = audit ? (audit.clasificacionLabel || "") : "";
     document.getElementById("afTipoRegistro").value = audit ? (audit.tipoRegistro || "AUDITORIA") : (defaultTipoRegistro || "AUDITORIA");
     document.getElementById("afEstatus").value = audit ? (audit.estatus || "Por Ejecutar") : "Por Ejecutar";
+    document.getElementById("afCierre").value = audit ? (audit.cierreManual || "") : "";
     document.getElementById("afModalidad").value = audit ? (audit.modalidad || "") : "";
     document.getElementById("afAuditorResponsable").value = audit ? (audit.auditorResponsable || "") : "";
     document.getElementById("afFechaProgramada").value = dateInputVal(audit && audit.fechaProgramada);
@@ -408,6 +409,7 @@
       tipoRegistro,
       tipoAmplio: tipoRegistro === "INSPECCION" ? "Inspección" : "Proveedor",
       estatus: document.getElementById("afEstatus").value,
+      cierreManual: document.getElementById("afCierre").value || null,
       modalidad: document.getElementById("afModalidad").value.trim() || null,
       auditorResponsable: document.getElementById("afAuditorResponsable").value.trim() || null,
       fechaProgramada: dateFromInput("afFechaProgramada"),
@@ -545,7 +547,7 @@
     document.getElementById("kpiGridFaa").innerHTML = [
       kpiCardHtml("Auditorías FAA", faa.length, "Categorías detectadas en AUDITORIAS_2026"),
       kpiCardHtml("Ejecutadas", ejecutadas),
-      kpiCardHtml("Cerradas", cerradas, "Todos sus hallazgos cerrados"),
+      kpiCardHtml("Cerradas", cerradas, "Sin hallazgos o todos cerrados"),
       kpiCardHtml("Hallazgos vinculados", hallazgos),
     ].join("");
     QA.charts.renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(faa), (label) => {

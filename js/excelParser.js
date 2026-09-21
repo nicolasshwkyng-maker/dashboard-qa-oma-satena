@@ -187,6 +187,9 @@ QA.excelParser = (function () {
         fechaProgramada: u.toDateOrNull(r[8]),
         fechaEjecucionReal: u.toDateOrNull(r[9]),
         especificacionServicio: (r[10] || "").toString().trim() || null,
+        // Cierre manual (opcional): Abierta / Cerrada / Cierre Parcial. Si va
+        // vacío, el cierre se calcula desde los hallazgos (statusEngine).
+        cierreManual: (r[11] || "").toString().trim() || null,
       });
     }
     return out;

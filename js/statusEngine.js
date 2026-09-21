@@ -47,21 +47,34 @@ QA.statusEngine = (function () {
     return CIERRE_TEXT_TO_CONST[u.normalize(finding.estadoHallazgo)] || null;
   }
 
+  /** Cierre escrito a mano en la columna "Cierre" de AUDITORIAS_2026 (o en
+   * el formulario): tolera Abierta/Abierto, Cerrada/Cerrado, Cierre Parcial. */
+  function computeCierreManual(texto) {
+    const t = u.normalize(texto);
+    if (!t) return null;
+    if (t.startsWith("ABIERT")) return CIERRE.ABIERTO;
+    if (t.startsWith("CERRAD")) return CIERRE.CERRADO;
+    if (t.includes("PARCIAL")) return CIERRE.CIERRE_PARCIAL;
+    return null;
+  }
+
   /**
-   * Rollup de cierre a nivel Auditoría, a partir del cierre de sus
-   * hallazgos vinculados: Cerrada si todos cerrados, Abierta si todos
-   * abiertos, Cierre Parcial si hay mezcla (o si algún hallazgo individual
-   * ya está marcado como Cierre Parcial). Solo aplica a auditorías
-   * EJECUTADAS (las demás no tienen nada que "cerrar" todavía → null, no
-   * entran en el gráfico). Una auditoría ejecutada SIN hallazgos vinculados
-   * TODAVÍA se considera Abierta: la ausencia de hallazgos registrados no
-   * confirma que no haya nada pendiente, solo que su determinación sigue
-   * en curso — no se cierra hasta que se confirme explícitamente.
+   * Cierre a nivel Auditoría. Solo aplica a auditorías EJECUTADAS (las demás
+   * no tienen nada que "cerrar" todavía → null, no entran en el gráfico).
+   *   1. Si el equipo lo escribió a mano (columna "Cierre"), manda.
+   *   2. Si no, se calcula desde sus hallazgos vinculados: Cerrada si todos
+   *      cerrados, Abierta si todos abiertos, Cierre Parcial si hay mezcla
+   *      (o si alguno ya está en Cierre Parcial).
+   *   3. Una auditoría ejecutada SIN hallazgos está Cerrada: no hay nada
+   *      pendiente. (Antes quedaba Abierta hasta confirmarlo; ahora esa
+   *      excepción se marca a mano con Cierre = Abierta.)
    */
-  function computeAuditoriaRollup(estadoCalculado, hallazgosDeLaAuditoria) {
+  function computeAuditoriaRollup(estadoCalculado, hallazgosDeLaAuditoria, cierreManualTexto) {
     if (estadoCalculado !== ESTADOS.EJECUTADA) return null;
+    const manual = computeCierreManual(cierreManualTexto);
+    if (manual) return manual;
     const cierres = (hallazgosDeLaAuditoria || []).map(computeCierreHallazgo).filter(Boolean);
-    if (!cierres.length) return CIERRE.ABIERTO;
+    if (!cierres.length) return CIERRE.CERRADO;
     if (cierres.some(c => c === CIERRE.CIERRE_PARCIAL)) return CIERRE.CIERRE_PARCIAL;
     const todosCerrados = cierres.every(c => c === CIERRE.CERRADO);
     const todosAbiertos = cierres.every(c => c === CIERRE.ABIERTO);
@@ -102,12 +115,12 @@ QA.statusEngine = (function () {
     audits.forEach((audit) => {
       audit.estadoCalculado = computeEstado(audit);
       audit.donutBucket = computeDonutBucket(audit);
-      audit.cierreRollup = computeAuditoriaRollup(audit.estadoCalculado, findingsByAuditId ? findingsByAuditId.get(audit.id) : null);
+      audit.cierreRollup = computeAuditoriaRollup(audit.estadoCalculado, findingsByAuditId ? findingsByAuditId.get(audit.id) : null, audit.cierreManual);
       audit.fechaReferencia = computeFechaReferencia(audit);
       audit.diasParaVencer = audit.fechaReferencia ? u.daysBetween(new Date(), new Date(audit.fechaReferencia)) : null;
     });
     return audits;
   }
 
-  return { ESTADOS, CIERRE, computeEstado, computeCierreHallazgo, computeAuditoriaRollup, computeDonutBucket, computeFechaReferencia, applyAll };
+  return { ESTADOS, CIERRE, computeEstado, computeCierreHallazgo, computeCierreManual, computeAuditoriaRollup, computeDonutBucket, computeFechaReferencia, applyAll };
 })();

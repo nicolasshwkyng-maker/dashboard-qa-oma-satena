@@ -60,7 +60,7 @@ QA.tables = (function () {
       { data: "fechaEjecucionReal", title: "Fecha Ejecución", render: (v) => u.formatDate(v) },
       { data: "estadoCalculado", title: "Estatus", render: (v) => estadoBadgeHtml(v) },
       { data: null, title: "Programación", render: (row) => row.esExtraordinaria ? badge("No Programada", P.amarilloD) : badge("Programada", P.acero) },
-      { data: "cierreRollup", title: "Cierre (hallazgos)", render: (v) => cierreBadgeHtml(v) },
+      { data: "cierreRollup", title: "Cierre", render: (v) => cierreBadgeHtml(v) },
       { data: "auditorResponsable", title: "Responsable", render: (v) => u.escapeHtml(v || "—") },
     ];
   }
@@ -213,7 +213,7 @@ QA.tables = (function () {
       "Modalidad": a.modalidad || "No especificado", "Ubicación": a.ciudad || "No especificado",
       "Fecha Programada": u.formatDate(a.fechaProgramada), "Fecha Ejecución": u.formatDate(a.fechaEjecucionReal),
       "Estatus": ESTADO_LABELS[a.estadoCalculado] || a.estadoCalculado, "Programación": a.esExtraordinaria ? "No Programada" : "Programada",
-      "Cierre (hallazgos)": CIERRE_LABELS[a.cierreRollup] || "—",
+      "Cierre": CIERRE_LABELS[a.cierreRollup] || "—",
       "Responsable": a.auditorResponsable || "—",
       "Hallazgos Vinculados": a.hallazgosVinculados || 0,
     }));

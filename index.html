@@ -301,7 +301,15 @@
                 <option value="Cancelada">Cancelada</option>
               </select>
             </div>
-            <div class="col-md-6"><label class="form-label">Modalidad</label><input class="form-control form-control-sm" id="afModalidad" placeholder="Presencial / Remota"></div>
+            <div class="col-md-3"><label class="form-label">Cierre</label>
+              <select class="form-select form-select-sm" id="afCierre" title="Solo aplica a auditorías Ejecutadas">
+                <option value="">Automático (según hallazgos)</option>
+                <option value="Abierta">Abierta</option>
+                <option value="Cerrada">Cerrada</option>
+                <option value="Cierre Parcial">Cierre Parcial</option>
+              </select>
+            </div>
+            <div class="col-md-3"><label class="form-label">Modalidad</label><input class="form-control form-control-sm" id="afModalidad" placeholder="Presencial / Remota"></div>
             <div class="col-md-6"><label class="form-label">Auditor Responsable</label><input class="form-control form-control-sm" id="afAuditorResponsable"></div>
             <div class="col-md-6"><label class="form-label">Fecha Programada</label><input type="date" class="form-control form-control-sm" id="afFechaProgramada"></div>
             <div class="col-md-6 d-flex align-items-end">
