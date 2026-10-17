@@ -382,7 +382,12 @@ QA.matching = (function () {
         const exactas = nombre ? audits.filter((a) => u.normalize(a.auditado) === nombre) : [];
         let best = null, bestScore = 0;
         if (exactas.length) {
-          best = exactas.find((a) => a.clasificacionCanonica === category) || exactas[0];
+          // Varias con el mismo nombre (p. ej. las inspecciones de cada mes):
+          // el ID del hallazgo (columna "ID AUDITORIA") desempata.
+          const porId = exactas.filter((a) => a.idAuditado !== null && a.idAuditado !== undefined && String(a.idAuditado) === String(finding.idAuditoria));
+          best = (porId.length === 1 && porId[0])
+            || exactas.find((a) => a.clasificacionCanonica === category)
+            || exactas[0];
           bestScore = 1;
         } else {
           ({ best, bestScore } = bestIn(pool));

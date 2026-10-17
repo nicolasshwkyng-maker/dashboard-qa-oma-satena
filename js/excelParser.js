@@ -29,6 +29,17 @@ QA.excelParser = (function () {
     return XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: true, defval: null });
   }
 
+  /** Hoja de control de cualquier vigencia: "<PREFIJO>_<año>" (AUDITORIAS_2025,
+   *  HALLAZGOS_2026…). Si hay varias, se usa la del año más reciente. */
+  function findYearSheet(wb, prefix) {
+    const re = new RegExp("^" + prefix + "_(\\d{4})$", "i");
+    const hits = wb.SheetNames.filter((n) => re.test(n)).sort((a, b) => b.localeCompare(a));
+    if (!hits.length) {
+      throw new Error(`No hay una hoja "${prefix}_<año>" (por ejemplo ${prefix}_2026) en el archivo. Hojas disponibles: ${wb.SheetNames.join(", ")}`);
+    }
+    return hits[0];
+  }
+
   function isEmptyRow(row) {
     return !row || row.every(v => v === null || v === undefined || v === "");
   }
@@ -167,8 +178,10 @@ QA.excelParser = (function () {
    * ------------------------------------------------------------------ */
   async function parseAuditorias2026(file) {
     const wb = await readWorkbook(file);
-    const rows = sheetToRows(wb, "AUDITORIAS_2026");
+    const hoja = findYearSheet(wb, "AUDITORIAS");
+    const rows = sheetToRows(wb, hoja);
     const out = [];
+    out.hoja = hoja;
     for (let i = 1; i < rows.length; i++) { // fila 0 = encabezado
       const r = rows[i];
       if (isEmptyRow(r)) continue;
@@ -205,8 +218,10 @@ QA.excelParser = (function () {
    * ------------------------------------------------------------------ */
   async function parseHallazgos2026(file) {
     const wb = await readWorkbook(file);
-    const rows = sheetToRows(wb, "HALLAZGOS_2026");
+    const hoja = findYearSheet(wb, "HALLAZGOS");
+    const rows = sheetToRows(wb, hoja);
     const out = [];
+    out.hoja = hoja;
     for (let i = 1; i < rows.length; i++) { // fila 0 = encabezado
       const r = rows[i];
       if (isEmptyRow(r)) continue;

@@ -22,14 +22,14 @@ QA.excelImport = (function () {
 
   /**
    * @param {File} file - el .xlsx elegido en el <input type="file">, con
-   *   las hojas AUDITORIAS_2026 y HALLAZGOS_2026.
+   *   las hojas AUDITORIAS_<año> y HALLAZGOS_<año>.
    * @returns {Promise<{audits: object[], findings: object[], resumen: object}>}
    */
   async function importFromExcel(file) {
     const rawAuditorias = await QA.excelParser.parseAuditorias2026(file);
     const rawFindings = await QA.excelParser.parseHallazgos2026(file);
     if (!rawAuditorias.length) {
-      throw new Error('La hoja "AUDITORIAS_2026" no tiene filas de datos válidas.');
+      throw new Error(`La hoja "${rawAuditorias.hoja}" no tiene filas de datos válidas.`);
     }
 
     const audits = rawAuditorias.map((a) => {
@@ -53,6 +53,8 @@ QA.excelImport = (function () {
       audits,
       findings,
       resumen: {
+        hojaAuditorias: rawAuditorias.hoja,
+        hojaHallazgos: rawFindings.hoja,
         auditorias: audits.filter((a) => a.tipoRegistro === "AUDITORIA").length,
         inspecciones: audits.filter((a) => a.tipoRegistro === "INSPECCION").length,
         hallazgos: findings.length,

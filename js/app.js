@@ -545,7 +545,7 @@
     const cerradas = faa.filter(a => a.cierreRollup === QA.statusEngine.CIERRE.CERRADO).length;
     const hallazgos = faa.reduce((n, a) => n + (a.hallazgosVinculados || 0), 0);
     document.getElementById("kpiGridFaa").innerHTML = [
-      kpiCardHtml("Auditorías FAA", faa.length, "Categorías detectadas en AUDITORIAS_2026"),
+      kpiCardHtml("Auditorías FAA", faa.length, "Categorías detectadas en la hoja de auditorías"),
       kpiCardHtml("Ejecutadas", ejecutadas),
       kpiCardHtml("Cerradas", cerradas, "Sin hallazgos o todos cerrados"),
       kpiCardHtml("Hallazgos vinculados", hallazgos),
@@ -680,9 +680,9 @@
         const { audits, findings, resumen } = await QA.excelImport.importFromExcel(file);
         await QA.dataService.replaceAllFromExcel(audits, findings, { fileName: file.name, importedAt: new Date().toISOString() });
         await startApp();
-        let msg = `Carga completa: ${resumen.auditorias} auditorías, ${resumen.inspecciones} inspecciones, ${resumen.hallazgos} hallazgos (${resumen.hallazgosVinculados} vinculados a una auditoría).`;
+        let msg = `Carga completa (${resumen.hojaAuditorias} + ${resumen.hojaHallazgos}): ${resumen.auditorias} auditorías, ${resumen.inspecciones} inspecciones, ${resumen.hallazgos} hallazgos (${resumen.hallazgosVinculados} vinculados a una auditoría).`;
         if (resumen.hallazgosSinVincular) {
-          msg += `\n\n${resumen.hallazgosSinVincular} hallazgo(s) no se pudieron vincular a ninguna auditoría por similitud de nombre. Auditados sin coincidencia:\n- ${resumen.nombresSinVincular.slice(0, 10).join("\n- ")}\n\nRevisa que el nombre en la columna "NOMBRE AUDITADO" de HALLAZGOS_2026 sea igual al de "Area o Proveedor" en AUDITORIAS_2026.`;
+          msg += `\n\n${resumen.hallazgosSinVincular} hallazgo(s) no se pudieron vincular a ninguna auditoría por similitud de nombre. Auditados sin coincidencia:\n- ${resumen.nombresSinVincular.slice(0, 10).join("\n- ")}\n\nRevisa que el nombre en la columna "NOMBRE AUDITADO" de ${resumen.hojaHallazgos} sea igual al de "Area o Proveedor" en ${resumen.hojaAuditorias}.`;
         }
         alert(msg);
       } catch (e) {

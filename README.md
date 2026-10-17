@@ -3,7 +3,7 @@
 Aplicación web para visualizar el estado de ejecución del Programa Anual de
 Auditorías de Aseguramiento de la Calidad de la OMA. **Sin backend,
 sin login, sin credenciales**: los datos se cargan subiendo el Excel de
-control (hojas `AUDITORIAS_2026` + `HALLAZGOS_2026`) y quedan guardados en
+control (hojas `AUDITORIAS_<año>` + `HALLAZGOS_<año>`: 2024, 2025, 2026…) y quedan guardados en
 el navegador de quien la abre (IndexedDB). Para actualizarla, se vuelve a
 cargar el Excel — reemplaza todo lo que había, igual que la primera versión
 de la app (100% local, sin backend), pero ahora desplegada en la web.
@@ -24,7 +24,7 @@ de la app (100% local, sin backend), pero ahora desplegada en la web.
   computador o celular, hay que volver a cargar el Excel ahí también.
 - **Carga de datos**: botón "📂 Cargar Excel" (o la pantalla inicial si
   todavía no hay nada cargado) — sube el `.xlsx` con las hojas
-  `AUDITORIAS_2026` y `HALLAZGOS_2026`, lo procesa en el navegador
+  `AUDITORIAS_<año>` y `HALLAZGOS_<año>` (cualquier vigencia), lo procesa en el navegador
   (`js/excelParser.js` + `js/matching.js` + `js/excelImport.js`, misma
   lógica que antes corría en Node contra Supabase) y reemplaza todo el
   contenido guardado.
@@ -82,8 +82,8 @@ exacto de columnas):
 
 | Hoja | Contenido |
 |---|---|
-| `AUDITORIAS_2026` | Una fila por auditoría/inspección: Estatus, Programada/No programada, Tipo (Auditoria QA / Inspección), Clasificación, Auditado, Ciudad, Modalidad, Fecha Proyectada, Ejecución Reprogramada, Servicios y, opcional, Cierre. |
-| `HALLAZGOS_2026` | Una fila por hallazgo (NC/OB), vinculado a su auditoría por similitud de nombre (no comparten ID) — condición, estado (Abierto/Cerrado/Cierre Parcial), causa raíz, fechas de notificación/cierre, etc. |
+| `AUDITORIAS_<año>` | Una fila por auditoría/inspección: Estatus, Programada/No programada, Tipo (Auditoria QA / Inspección), Clasificación, Auditado, Ciudad, Modalidad, Fecha Proyectada, Ejecución Reprogramada, Servicios y, opcional, Cierre. |
+| `HALLAZGOS_<año>` | Una fila por hallazgo (NC/OB), vinculado a su auditoría por nombre (si varias auditorías comparten nombre, desempata el ID de la columna `ID AUDITORIA`) — condición, estado (Abierto/Cerrado/Cierre Parcial), causa raíz, fechas de notificación/cierre, etc. |
 
 ### ¿Cuándo se considera "ejecutada" una auditoría?
 

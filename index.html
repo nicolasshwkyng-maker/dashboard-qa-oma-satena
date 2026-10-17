@@ -22,7 +22,7 @@
     <h1>Dashboard QA-OMA</h1>
     <p class="setup-sub">Programa Anual de Auditorías de Aseguramiento de la Calidad</p>
     <div id="setupAlertBox"></div>
-    <p class="setup-sub" style="margin-top:16px;">Carga el Excel de control (hojas <strong>AUDITORIAS_2026</strong> y <strong>HALLAZGOS_2026</strong>) para comenzar. Los datos quedan guardados en este navegador — no se suben a ningún servidor.</p>
+    <p class="setup-sub" style="margin-top:16px;">Carga el Excel de control (hojas <strong>AUDITORIAS_&lt;año&gt;</strong> y <strong>HALLAZGOS_&lt;año&gt;</strong>, p. ej. 2024, 2025 o 2026) para comenzar. Los datos quedan guardados en este navegador — no se suben a ningún servidor.</p>
     <button type="button" class="btn btn-qa-primary w-100 mt-2" id="btnCargarExcelSetup">📂 Cargar Excel</button>
   </div>
 </div>
@@ -218,7 +218,7 @@
     <!-- ============================= FAA SELF EVALUATION ============================= -->
     <section id="secFaa" class="qa-section d-none">
       <div class="qa-alert-info">
-        Auditorías FAA (<em>limited ratings</em> de la propia OMA): se detectan automáticamente en la hoja <strong>AUDITORIAS_2026</strong> por su nombre (Limited Accessories, Airframe, Emergency Equipment, Engine, Instruments, Propeller, Radio, Other Metallic and Composite Components). Suman al programa general como cualquier otra auditoría; aquí se ven aparte.
+        Auditorías FAA (<em>limited ratings</em> de la propia OMA): se detectan automáticamente en la hoja de auditorías por su nombre (Limited Accessories, Airframe, Emergency Equipment, Engine, Instruments, Propeller, Radio, Other Metallic and Composite Components). Suman al programa general como cualquier otra auditoría; aquí se ven aparte.
       </div>
       <div class="qa-kpi-grid cols-4" id="kpiGridFaa"></div>
       <div class="qa-chart-grid cols-1">
