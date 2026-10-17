@@ -192,7 +192,9 @@
     }
   }
 
-  const debouncedReload = u.debounce(() => { if (state.loaded) loadAndRenderAll(); }, 400);
+  // startApp (no loadAndRenderAll) para que, si otra pestaña reinició la app,
+  // esta también vuelva a la pantalla inicial en vez de mostrar datos viejos.
+  const debouncedReload = u.debounce(() => { if (state.loaded) startApp(); }, 400);
 
   /** Muestra la app o la pantalla "sin datos todavía" según si ya hay algo
    * cargado en IndexedDB — reemplaza al antiguo chequeo de sesión Supabase. */
@@ -783,6 +785,37 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Reiniciar: borra los datos guardados y las preferencias (filtros,
+   * vigencia elegida) y vuelve a la pantalla inicial "cargar Excel".
+   * ------------------------------------------------------------------ */
+  function wireReset() {
+    document.getElementById("btnReiniciar").addEventListener("click", async () => {
+      const cuantas = state.years.length;
+      const ok = confirm(
+        "Vas a reiniciar la app: se borran TODOS los datos guardados en este navegador" +
+        (cuantas ? ` (${cuantas} vigencia${cuantas === 1 ? "" : "s"}: ${state.years.join(", ")})` : "") +
+        " y se limpian los filtros. Tendrás que volver a cargar un Excel. Esta acción no se puede deshacer. ¿Continuar?");
+      if (!ok) return;
+      showLoading("Reiniciando…");
+      try {
+        await QA.dataService.clearAll();
+        try { localStorage.removeItem(YEAR_KEY); } catch (e) { /* no crítico */ }
+        QA.filters.reset();
+        Object.assign(state, { everyAudits: [], everyFindings: [], allAudits: [], allFindings: [], years: [], year: null, loaded: false, lastKpis: null, lastKpisInsp: null });
+        document.getElementById("lblUltimaActualizacion").textContent = "";
+        clearSetupAlert();
+        showEmptyDataScreen();
+        window.scrollTo(0, 0);
+      } catch (e) {
+        console.error(e);
+        alert("No se pudo reiniciar: " + (e && e.message ? e.message : e));
+      } finally {
+        hideLoading();
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Acciones de cabecera: imprimir, exportar PDF, nuevos registros
    * ------------------------------------------------------------------ */
   function wireHeaderActions() {
@@ -814,6 +847,7 @@
     wireYearPicker();
     wireNav();
     wireExcelImport();
+    wireReset();
     wireHeaderActions();
     wireKpiModals();
     wireAuditoriaForm();

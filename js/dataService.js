@@ -175,6 +175,18 @@ QA.dataService = (function () {
     broadcast();
   }
 
+  /** Borra TODO lo guardado en este navegador (todas las vigencias) y deja la
+   * app como recién instalada: la próxima vez pide cargar un Excel. */
+  async function clearAll() {
+    const db = await openDb();
+    const t = db.transaction(["auditorias", "hallazgos", "meta"], "readwrite");
+    t.objectStore("auditorias").clear();
+    t.objectStore("hallazgos").clear();
+    t.objectStore("meta").clear();
+    await txDone(t);
+    broadcast();
+  }
+
   /** Metadatos de la última carga de cada vigencia: { [anio]: {fileName, importedAt} } */
   async function getImportMetaByYear() {
     const all = await getAll("meta");
@@ -201,6 +213,6 @@ QA.dataService = (function () {
     fetchAuditorias, saveAuditoria, deleteAuditoria,
     fetchHallazgos, saveHallazgo, deleteHallazgo,
     subscribeToChanges,
-    migrateLegacy, replaceVigencias, getImportMetaByYear,
+    migrateLegacy, replaceVigencias, getImportMetaByYear, clearAll,
   };
 })();
