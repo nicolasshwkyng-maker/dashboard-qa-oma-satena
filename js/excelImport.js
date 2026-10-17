@@ -7,7 +7,7 @@
  * nombre) — la misma lógica que antes corría en Node contra Supabase
  * (scripts/migrate-2026.mjs), ahora produciendo directamente los objetos
  * camelCase que ya consume el resto de la app (statusEngine/kpiEngine/...),
- * listos para guardar con QA.dataService.replaceAllFromExcel().
+ * listos para guardar con QA.dataService.replaceVigencias().
  */
 
 window.QA = window.QA || {};
@@ -22,20 +22,30 @@ QA.excelImport = (function () {
 
   /**
    * @param {File} file - el .xlsx elegido en el <input type="file">, con
-   *   las hojas AUDITORIAS_<año> y HALLAZGOS_<año>.
-   * @returns {Promise<{audits: object[], findings: object[], resumen: object}>}
+   *   una o más vigencias: hojas AUDITORIAS_<año> y HALLAZGOS_<año>.
+   * @returns {Promise<{vigencias: Array<{anio:number, audits:object[], findings:object[], resumen:object}>}>}
    */
   async function importFromExcel(file) {
-    const rawAuditorias = await QA.excelParser.parseAuditorias2026(file);
-    const rawFindings = await QA.excelParser.parseHallazgos2026(file);
+    const years = await QA.excelParser.listYears(file);
+    const vigencias = [];
+    for (const y of years) {
+      vigencias.push(await importVigencia(file, y));
+    }
+    return { vigencias };
+  }
+
+  async function importVigencia(file, y) {
+    const rawAuditorias = await QA.excelParser.parseAuditorias2026(file, y.anio);
+    const rawFindings = y.hojaHallazgos ? await QA.excelParser.parseHallazgos2026(file, y.anio) : [];
     if (!rawAuditorias.length) {
-      throw new Error(`La hoja "${rawAuditorias.hoja}" no tiene filas de datos válidas.`);
+      throw new Error(`La hoja "${y.hojaAuditorias}" no tiene filas de datos válidas.`);
     }
 
     const audits = rawAuditorias.map((a) => {
       const categoria = QA.matching.resolveCategory(a.clasificacionRaw);
       return Object.assign({}, a, {
         id: crypto.randomUUID(),
+        anio: y.anio,
         clasificacionCanonica: categoria,
         clasificacionLabel: (categoria && QA.config.CANONICAL_CATEGORIES[categoria]) || a.clasificacionRaw,
         tipoAmplio: a.tipoRegistro === "INSPECCION" ? "Inspección" : (TIPO_AMPLIO_BY_CATEGORY[categoria] || "Proveedor"),
@@ -45,16 +55,18 @@ QA.excelImport = (function () {
       });
     });
 
-    const findings = rawFindings.map((f) => Object.assign({}, f, { id: crypto.randomUUID() }));
+    const findings = rawFindings.map((f) => Object.assign({}, f, { id: crypto.randomUUID(), anio: y.anio }));
     QA.matching.linkFindingsToAudits(findings, audits);
 
     const sinVincular = findings.filter((f) => !f.auditoriaVinculada).length;
     return {
+      anio: y.anio,
       audits,
       findings,
       resumen: {
-        hojaAuditorias: rawAuditorias.hoja,
-        hojaHallazgos: rawFindings.hoja,
+        anio: y.anio,
+        hojaAuditorias: y.hojaAuditorias,
+        hojaHallazgos: y.hojaHallazgos,
         auditorias: audits.filter((a) => a.tipoRegistro === "AUDITORIA").length,
         inspecciones: audits.filter((a) => a.tipoRegistro === "INSPECCION").length,
         hallazgos: findings.length,

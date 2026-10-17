@@ -126,6 +126,15 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
   font-size: 11.5px; padding: 6px 12px; border-radius: 7px; font-weight: 500;
 }
 .btn-header-action:hover { background: rgba(255,255,255,.2); color: #fff; }
+.qa-year-picker { display: flex; align-items: center; gap: 6px; margin: 0 4px 0 0; }
+.qa-year-picker span { font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: rgba(255,255,255,.7); }
+.qa-year-picker select {
+  background-color: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.3);
+  font-size: 12px; font-weight: 600; padding: 4px 28px 4px 10px; border-radius: 7px; min-width: 84px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+.qa-year-picker select option { color: #1A2F49; background: #fff; }
+.qa-year-picker select:focus { box-shadow: 0 0 0 2px var(--amarillo); border-color: var(--amarillo); }
 
 /* ================================================================== *
  * NAV
@@ -306,3 +315,19 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .page-link:hover { color: var(--azul-m); background: var(--azul-l); }
 .page-item.active .page-link { background-color: var(--azul); border-color: var(--azul); color: #fff; }
 .form-select:focus, .form-control:focus { border-color: var(--azul-m); box-shadow: 0 0 0 .2rem rgba(46, 95, 127, .2); }
+
+
+/* ================================================================== *
+ * COMPARATIVO DE VIGENCIAS
+ * ================================================================== */
+.qa-cmp-table { font-size: 12.5px; }
+.qa-cmp-table th { background: var(--azul); color: #fff; font-weight: 600; text-align: right; white-space: nowrap; }
+.qa-cmp-table th:first-child { text-align: left; }
+.qa-cmp-table td { text-align: right; vertical-align: middle; font-variant-numeric: tabular-nums; }
+.qa-cmp-table td:first-child { text-align: left; }
+.qa-cmp-table tr.cmp-group td { background: var(--gris-ll); font-weight: 700; color: var(--azul); text-align: left; text-transform: uppercase; font-size: 10.5px; letter-spacing: .05em; }
+.qa-cmp-table td.cmp-delta { font-weight: 600; white-space: nowrap; }
+.qa-cmp-table td.cmp-good { color: #2d6a4f; }
+.qa-cmp-table td.cmp-bad { color: var(--rojo); }
+.qa-cmp-table td.cmp-flat { color: var(--gris-m); }
+.qa-cmp-table td.cmp-na { color: var(--gris-m); }

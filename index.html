@@ -41,7 +41,11 @@
     </div>
     <div class="qa-header-actions">
       <span class="qa-header-updated" id="lblUltimaActualizacion"></span>
-      <button class="btn btn-header-action" id="btnCargarExcel" title="Cargar un Excel de control nuevo (reemplaza todos los datos actuales)">📂 Cargar Excel</button>
+      <label class="qa-year-picker" title="Vigencia (año) que muestran las pestañas. Cada Excel cargado agrega o reemplaza solo su vigencia.">
+        <span>Vigencia</span>
+        <select id="selAnio" class="form-select form-select-sm"></select>
+      </label>
+      <button class="btn btn-header-action" id="btnCargarExcel" title="Cargar un Excel de control: agrega o reemplaza las vigencias (años) que trae; las demás se conservan">📂 Cargar Excel</button>
       <button class="btn btn-header-action" id="btnPrint" title="Imprimir la vista actual">🖶 Imprimir</button>
       <button class="btn btn-header-action" id="btnExportPdf" title="Exportar todo el dashboard a PDF">⭳ Exportar PDF</button>
     </div>
@@ -53,10 +57,10 @@
     <button class="qa-nav-item" data-section="secInspecciones">Inspecciones</button>
     <button class="qa-nav-item" data-section="secHallazgos">Hallazgos</button>
     <button class="qa-nav-item" data-section="secFaa">FAA · Self Evaluation</button>
+    <button class="qa-nav-item d-none" id="navComparativo" data-section="secComparativo">Comparativo de Vigencias</button>
   </nav>
 
   <div class="qa-filters-bar no-print" id="filtersBar">
-    <div class="qa-filter"><label>Año</label><select id="fAnio" class="form-select form-select-sm"><option value="">Todos</option></select></div>
     <div class="qa-filter"><label>Mes</label><select id="fMes" class="form-select form-select-sm"><option value="">Todos</option></select></div>
     <div class="qa-filter"><label>Clasificación</label><select id="fClasificacion" class="form-select form-select-sm"><option value="">Todas</option></select></div>
     <div class="qa-filter"><label>Tipo</label><select id="fTipo" class="form-select form-select-sm"><option value="">Todos</option></select></div>
@@ -228,6 +232,31 @@
         <div class="qa-table-card-header"><div class="qa-chart-title mb-0">Auditorías FAA</div></div>
         <div class="qa-table-hint text-muted small mb-1">Clic en una fila para editarla.</div>
         <div class="table-responsive"><table id="tblFaa" class="table table-hover qa-table w-100"></table></div>
+      </div>
+    </section>
+
+    <!-- ============================= COMPARATIVO DE VIGENCIAS ============================= -->
+    <section id="secComparativo" class="qa-section d-none">
+      <div class="qa-alert-info" id="cmpIntro"></div>
+      <div class="qa-table-card">
+        <div class="qa-table-card-header"><div class="qa-chart-title mb-0">Indicadores por vigencia</div></div>
+        <div class="qa-table-hint text-muted small mb-1">Solo auditorías, salvo el bloque de Inspecciones. La columna Δ compara la última vigencia contra la anterior; en verde lo que mejora, en rojo lo que empeora.</div>
+        <div class="table-responsive"><table id="tblComparativo" class="table qa-table qa-cmp-table w-100"></table></div>
+      </div>
+      <div class="qa-chart-grid cols-2">
+        <div class="qa-chart-card"><div class="qa-chart-title">Cumplimiento del cronograma y avance total <span class="qa-chart-sub">(%)</span></div><div class="qa-chart-canvas-wrap"><canvas id="chartCmpCumplimiento"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Estado del programa <span class="qa-chart-sub">(auditorías)</span></div><div class="qa-chart-canvas-wrap"><canvas id="chartCmpEstado"></canvas></div></div>
+      </div>
+      <div class="qa-chart-grid cols-1">
+        <div class="qa-chart-card"><div class="qa-chart-title">Auditorías ejecutadas por mes <span class="qa-chart-sub">(ejecutadas + no programadas ejecutadas)</span></div><div class="qa-chart-canvas-wrap tall"><canvas id="chartCmpMes"></canvas></div></div>
+      </div>
+      <div class="qa-chart-grid cols-2">
+        <div class="qa-chart-card"><div class="qa-chart-title">Hallazgos por estado</div><div class="qa-chart-canvas-wrap"><canvas id="chartCmpHallazgos"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Hallazgos por tipo <span class="qa-chart-sub">(NC / OB)</span></div><div class="qa-chart-canvas-wrap"><canvas id="chartCmpCondicion"></canvas></div></div>
+      </div>
+      <div class="qa-chart-grid cols-2">
+        <div class="qa-chart-card"><div class="qa-chart-title">Auditorías por clasificación</div><div class="qa-chart-canvas-wrap tall"><canvas id="chartCmpClasificacion"></canvas></div></div>
+        <div class="qa-chart-card"><div class="qa-chart-title">Inspecciones: programadas vs ejecutadas</div><div class="qa-chart-canvas-wrap tall"><canvas id="chartCmpInspecciones"></canvas></div></div>
       </div>
     </section>
 
@@ -406,6 +435,7 @@
 <script src="js/statusEngine.js"></script>
 <script src="js/kpiEngine.js"></script>
 <script src="js/charts.js"></script>
+<script src="js/comparativo.js"></script>
 <script src="js/tables.js"></script>
 <script src="js/filters.js"></script>
 <script src="js/exportPdf.js"></script>

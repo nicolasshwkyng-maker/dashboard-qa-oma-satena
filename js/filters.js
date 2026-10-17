@@ -24,6 +24,9 @@ QA.filters = (function () {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) state = { ...EMPTY_STATE, ...JSON.parse(raw) };
+      // El filtro "Año" lo reemplazó el selector de Vigencia: un valor guardado
+      // de antes no debe seguir filtrando sin que haya dónde quitarlo.
+      state.anio = "";
     } catch (e) { /* localStorage no disponible: se usa el estado por defecto */ }
     return state;
   }

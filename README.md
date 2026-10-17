@@ -24,10 +24,14 @@ de la app (100% local, sin backend), pero ahora desplegada en la web.
   computador o celular, hay que volver a cargar el Excel ahí también.
 - **Carga de datos**: botón "📂 Cargar Excel" (o la pantalla inicial si
   todavía no hay nada cargado) — sube el `.xlsx` con las hojas
-  `AUDITORIAS_<año>` y `HALLAZGOS_<año>` (cualquier vigencia), lo procesa en el navegador
-  (`js/excelParser.js` + `js/matching.js` + `js/excelImport.js`, misma
-  lógica que antes corría en Node contra Supabase) y reemplaza todo el
-  contenido guardado.
+  `AUDITORIAS_<año>` y `HALLAZGOS_<año>` (puede traer una o varias
+  vigencias), lo procesa en el navegador (`js/excelParser.js` +
+  `js/matching.js` + `js/excelImport.js`) y **reemplaza solo las vigencias
+  que trae**: las demás quedan intactas.
+- **Vigencias (años)**: el selector "Vigencia" del encabezado cambia el año
+  que muestran todas las pestañas. Con 2 o más años cargados aparece la
+  pestaña **Comparativo de Vigencias** (tabla de indicadores con Δ contra el
+  año anterior + gráficos lado a lado; no usa los filtros globales).
 - **Edición puntual**: los formularios "+ Nueva Auditoría/Inspección/
   Hallazgo" y el clic sobre una fila siguen disponibles para ajustes entre
   una carga de Excel y la siguiente — se guardan en IndexedDB igual que la
@@ -65,10 +69,11 @@ SATENA_QA_Dashboard/
     ├── excelParser.js              Lee las hojas AUDITORIAS_2026 / HALLAZGOS_2026 del Excel
     ├── matching.js                   Clasificación canónica + vínculo hallazgo->auditoría por nombre
     ├── excelImport.js                  Junta lo anterior en objetos listos para guardar
-    ├── dataService.js                    Fuente de datos: IndexedDB (fetch/save/delete)
+    ├── dataService.js                    Fuente de datos: IndexedDB por vigencia (fetch/save/delete)
     ├── statusEngine.js                     Cálculo del estado real de cada auditoría
     ├── kpiEngine.js                          Cálculo de KPIs y agregaciones para gráficos
     ├── charts.js                              Renderizado de todos los gráficos (Chart.js)
+    ├── comparativo.js                           Comparativo de vigencias (tabla + datos de gráficos)
     ├── tables.js                                Tablas dinámicas (DataTables) + export a Excel
     ├── filters.js                                Filtros globales
     ├── exportPdf.js                               Exportación del dashboard a PDF

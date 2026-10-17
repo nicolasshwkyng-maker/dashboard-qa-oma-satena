@@ -127,18 +127,61 @@ QA.dataService = (function () {
   }
 
   /* ------------------------------------------------------------------ *
-   * Carga masiva desde Excel (ver js/excelImport.js): reemplaza TODO el
-   * contenido de auditorias/hallazgos por lo que traiga el archivo — el
-   * Excel es la fuente de verdad de cada carga, igual que en el modelo
-   * original basado en archivos locales.
+   * Vigencias (años). Cada auditoría y cada hallazgo lleva `anio` — la
+   * vigencia del Excel de donde salió (hoja AUDITORIAS_<año>). Cargar un
+   * Excel REEMPLAZA solo las vigencias que trae; las demás quedan intactas,
+   * así se pueden tener 2024, 2025 y 2026 a la vez y compararlos.
    * ------------------------------------------------------------------ */
-  async function replaceAllFromExcel(auditorias, hallazgos, meta) {
-    await clearAndPutAll("auditorias", auditorias);
-    await clearAndPutAll("hallazgos", hallazgos);
-    await putOne("meta", Object.assign({ key: "lastImport" }, meta));
+
+  /** Datos guardados antes de existir las vigencias no traen `anio`: se les
+   * asigna el año más frecuente de sus fechas (una sola vez) para no perderlos. */
+  async function migrateLegacy() {
+    const [auditorias, hallazgos] = await Promise.all([getAll("auditorias"), getAll("hallazgos")]);
+    const sinAnio = auditorias.filter((a) => !a.anio);
+    if (!sinAnio.length && !hallazgos.some((h) => !h.anio)) return;
+    const counts = new Map();
+    sinAnio.forEach((a) => {
+      const d = a.fechaProgramada || a.fechaEjecucionReal;
+      if (d) { const y = new Date(d).getFullYear(); counts.set(y, (counts.get(y) || 0) + 1); }
+    });
+    let anio = new Date().getFullYear(), best = 0;
+    counts.forEach((n, y) => { if (n > best) { best = n; anio = y; } });
+    const anioDeAuditoria = new Map();
+    auditorias.forEach((a) => { if (!a.anio) a.anio = anio; anioDeAuditoria.set(a.id, a.anio); });
+    hallazgos.forEach((h) => { if (!h.anio) h.anio = anioDeAuditoria.get(h.auditoriaVinculada) || anio; });
+    await putAll("auditorias", auditorias);
+    await putAll("hallazgos", hallazgos);
+    const legacy = await getOne("meta", "lastImport");
+    if (legacy) { await putOne("meta", Object.assign({}, legacy, { key: "import_" + anio })); await deleteOne("meta", "lastImport"); }
+  }
+
+  /** Reemplaza las vigencias recibidas ({anio, audits, findings}[]) sin tocar
+   * las demás. `meta` = { fileName, importedAt }. */
+  async function replaceVigencias(vigencias, meta) {
+    await migrateLegacy();
+    const anios = new Set(vigencias.map((v) => v.anio));
+    const [auditorias, hallazgos] = await Promise.all([getAll("auditorias"), getAll("hallazgos")]);
+    const db = await openDb();
+    const t = db.transaction(["auditorias", "hallazgos", "meta"], "readwrite");
+    const sA = t.objectStore("auditorias"), sH = t.objectStore("hallazgos"), sM = t.objectStore("meta");
+    auditorias.filter((a) => anios.has(a.anio)).forEach((a) => sA.delete(a.id));
+    hallazgos.filter((h) => anios.has(h.anio)).forEach((h) => sH.delete(h.id));
+    vigencias.forEach((v) => {
+      v.audits.forEach((a) => sA.put(a));
+      v.findings.forEach((h) => sH.put(h));
+      sM.put(Object.assign({ key: "import_" + v.anio, anio: v.anio }, meta));
+    });
+    await txDone(t);
     broadcast();
   }
-  async function getLastImportMeta() { return getOne("meta", "lastImport"); }
+
+  /** Metadatos de la última carga de cada vigencia: { [anio]: {fileName, importedAt} } */
+  async function getImportMetaByYear() {
+    const all = await getAll("meta");
+    const out = {};
+    all.filter((m) => /^import_\d{4}$/.test(m.key)).forEach((m) => { out[m.anio || Number(m.key.slice(7))] = m; });
+    return out;
+  }
 
   /* ------------------------------------------------------------------ *
    * Sincronización entre pestañas del MISMO navegador — no hay backend que
@@ -158,6 +201,6 @@ QA.dataService = (function () {
     fetchAuditorias, saveAuditoria, deleteAuditoria,
     fetchHallazgos, saveHallazgo, deleteHallazgo,
     subscribeToChanges,
-    replaceAllFromExcel, getLastImportMeta,
+    migrateLegacy, replaceVigencias, getImportMetaByYear,
   };
 })();

@@ -18,8 +18,13 @@
 (function () {
   const u = QA.utils;
 
+  const YEAR_KEY = "qa_satena_dashboard_vigencia";
   const state = {
+    // everyAudits/everyFindings = TODAS las vigencias cargadas; allAudits/
+    // allFindings = solo la vigencia (año) elegida en el selector del header.
+    everyAudits: [], everyFindings: [],
     allAudits: [], allFindings: [],
+    years: [], year: null,
     loaded: false, lastKpis: null, lastKpisInsp: null,
   };
   let stopRealtime = null;
@@ -90,16 +95,76 @@
   }
 
   async function renderLastImportLabel() {
-    const meta = await QA.dataService.getLastImportMeta();
+    const metas = await QA.dataService.getImportMetaByYear();
+    const meta = metas[state.year];
     const el = document.getElementById("lblUltimaActualizacion");
     if (!meta) { el.textContent = ""; return; }
     const fecha = new Date(meta.importedAt).toLocaleString("es-CO");
-    el.textContent = `Datos cargados el ${fecha}` + (meta.fileName ? ` desde "${meta.fileName}"` : "");
+    el.textContent = `Vigencia ${state.year}: cargada el ${fecha}` + (meta.fileName ? ` desde "${meta.fileName}"` : "");
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Vigencias (años): selector del header + comparativo
+   * ------------------------------------------------------------------ */
+  function savedYear() {
+    try { return Number(localStorage.getItem(YEAR_KEY)) || null; } catch (e) { return null; }
+  }
+  function persistYear() {
+    try { localStorage.setItem(YEAR_KEY, String(state.year)); } catch (e) { /* no crítico */ }
+  }
+
+  /** Recalcula la lista de vigencias presentes y deja elegida una válida
+   * (la actual, si sigue existiendo; si no la última usada; si no la más reciente). */
+  function refreshYears() {
+    const years = [...new Set(state.everyAudits.map((a) => a.anio).filter(Boolean))].sort((a, b) => a - b);
+    state.years = years;
+    if (!years.includes(state.year)) {
+      const saved = savedYear();
+      state.year = years.includes(saved) ? saved : years[years.length - 1];
+    }
+    const sel = document.getElementById("selAnio");
+    sel.innerHTML = years.map((y) => `<option value="${y}">${y}</option>`).join("");
+    sel.value = String(state.year);
+    persistYear();
+  }
+
+  function applyYearSlice() {
+    state.allAudits = state.everyAudits.filter((a) => a.anio === state.year);
+    state.allFindings = state.everyFindings.filter((f) => f.anio === state.year);
+  }
+
+  /** Pestaña "Comparativo de Vigencias": solo existe con 2 o más años cargados. */
+  function renderComparativo() {
+    const nav = document.getElementById("navComparativo");
+    const hay = state.years.length >= 2;
+    nav.classList.toggle("d-none", !hay);
+    if (!hay) {
+      if (!document.getElementById("secComparativo").classList.contains("d-none")) document.querySelector('.qa-nav-item[data-section="secResumen"]').click();
+      return;
+    }
+    const byYear = new Map(state.years.map((y) => [y, {
+      audits: state.everyAudits.filter((a) => a.anio === y),
+      findings: state.everyFindings.filter((f) => f.anio === y),
+    }]));
+    QA.comparativo.render(byYear);
+  }
+
+  function wireYearPicker() {
+    document.getElementById("selAnio").addEventListener("change", async (e) => {
+      state.year = Number(e.target.value);
+      persistYear();
+      QA.filters.reset(); // los proveedores/áreas elegidos pueden no existir en la otra vigencia
+      applyYearSlice();
+      populateFilterOptions();
+      renderEverything();
+      await renderLastImportLabel();
+    });
   }
 
   async function loadAndRenderAll() {
     try {
       showLoading("Leyendo auditorías y hallazgos…");
+      await QA.dataService.migrateLegacy();
       const [audits, findings] = await Promise.all([
         QA.dataService.fetchAuditorias(), QA.dataService.fetchHallazgos(),
       ]);
@@ -107,13 +172,16 @@
       QA.statusEngine.applyAll(audits, findingsByAuditId);
       attachFindingsToAudits(audits, findingsByAuditId);
 
-      state.allAudits = audits;
-      state.allFindings = findings;
+      state.everyAudits = audits;
+      state.everyFindings = findings;
       state.loaded = true;
 
       QA.filters.load();
+      refreshYears();
+      applyYearSlice();
       populateFilterOptions();
       renderEverything();
+      renderComparativo();
 
       await renderLastImportLabel();
       hideLoading();
@@ -158,7 +226,6 @@
   function populateFilterOptions() {
     const opts = QA.filters.buildOptions(state.allAudits, state.allFindings);
     const s = QA.filters.getState();
-    fillSelect("fAnio", opts.years, null, null, s.anio);
     fillSelect("fMes", opts.months, "value", "label", s.mes);
     fillSelect("fClasificacion", opts.clasificaciones, null, null, s.clasificacion);
     fillSelect("fTipo", ["Proveedor", "Área Interna", "Inspección"], null, null, s.tipo);
@@ -172,7 +239,7 @@
   }
 
   function wireFilters() {
-    const map = { fAnio: "anio", fMes: "mes", fClasificacion: "clasificacion", fTipo: "tipo", fProveedor: "proveedor", fAreaInterna: "areaInterna", fModalidad: "modalidad", fUbicacion: "ubicacion", fAuditor: "auditor", fEstado: "estado", fProgramacion: "programacion" };
+    const map = { fMes: "mes", fClasificacion: "clasificacion", fTipo: "tipo", fProveedor: "proveedor", fAreaInterna: "areaInterna", fModalidad: "modalidad", fUbicacion: "ubicacion", fAuditor: "auditor", fEstado: "estado", fProgramacion: "programacion" };
     Object.entries(map).forEach(([elId, key]) => {
       document.getElementById(elId).addEventListener("change", (e) => {
         QA.filters.setValue(key, e.target.value);
@@ -427,6 +494,7 @@
       const values = collectAuditoriaFormValues();
       if (!values.auditado) return;
       const merged = Object.assign({}, editingAuditoria || {}, values);
+      if (!merged.anio) merged.anio = state.year; // los registros nuevos pertenecen a la vigencia que se está viendo
       try {
         await QA.dataService.saveAuditoria(merged);
         getAuditoriaModal().hide();
@@ -515,6 +583,7 @@
       const linkedAudit = state.allAudits.find(a => a.id === values.auditoriaVinculada);
       values.auditado = linkedAudit ? linkedAudit.auditado : (editingHallazgo ? editingHallazgo.auditado : null);
       const merged = Object.assign({}, editingHallazgo || {}, values);
+      merged.anio = (linkedAudit && linkedAudit.anio) || merged.anio || state.year;
       try {
         await QA.dataService.saveHallazgo(merged);
         getHallazgoModal().hide();
@@ -649,6 +718,8 @@
         btn.classList.add("active");
         document.querySelectorAll(".qa-section").forEach(s => s.classList.add("d-none"));
         document.getElementById(btn.dataset.section).classList.remove("d-none");
+        // Los filtros globales no aplican al comparativo (compara programas completos).
+        document.getElementById("filtersBar").classList.toggle("d-none", btn.dataset.section === "secComparativo");
         QA.charts.resizeAll();
       });
     });
@@ -656,9 +727,10 @@
 
   /* ------------------------------------------------------------------ *
    * Carga de Excel: botón en el header y en la pantalla "sin datos" abren
-   * el mismo <input type="file"> oculto; siempre REEMPLAZA todo lo que
-   * había (el Excel es la fuente de verdad de cada carga, igual que en el
-   * modelo original de archivo local — ver js/excelImport.js).
+   * el mismo <input type="file"> oculto. Cada Excel trae una o varias
+   * vigencias (hojas AUDITORIAS_<año> + HALLAZGOS_<año>): reemplaza SOLO
+   * esas vigencias y conserva las demás (ver js/excelImport.js y
+   * dataService.replaceVigencias).
    * ------------------------------------------------------------------ */
   function wireExcelImport() {
     const input = document.getElementById("excelFileInput");
@@ -671,19 +743,34 @@
       input.value = ""; // permite volver a elegir el mismo archivo más adelante
       if (!file) return;
 
-      const hayDatos = state.loaded && state.allAudits.length > 0;
-      if (hayDatos && !confirm(`Vas a reemplazar TODOS los datos actuales con "${file.name}". Esta acción no se puede deshacer. ¿Continuar?`)) return;
+      const hayDatos = state.loaded && state.everyAudits.length > 0;
 
       showLoading("Leyendo el Excel…");
       clearSetupAlert();
       try {
-        const { audits, findings, resumen } = await QA.excelImport.importFromExcel(file);
-        await QA.dataService.replaceAllFromExcel(audits, findings, { fileName: file.name, importedAt: new Date().toISOString() });
-        await startApp();
-        let msg = `Carga completa (${resumen.hojaAuditorias} + ${resumen.hojaHallazgos}): ${resumen.auditorias} auditorías, ${resumen.inspecciones} inspecciones, ${resumen.hallazgos} hallazgos (${resumen.hallazgosVinculados} vinculados a una auditoría).`;
-        if (resumen.hallazgosSinVincular) {
-          msg += `\n\n${resumen.hallazgosSinVincular} hallazgo(s) no se pudieron vincular a ninguna auditoría por similitud de nombre. Auditados sin coincidencia:\n- ${resumen.nombresSinVincular.slice(0, 10).join("\n- ")}\n\nRevisa que el nombre en la columna "NOMBRE AUDITADO" de ${resumen.hojaHallazgos} sea igual al de "Area o Proveedor" en ${resumen.hojaAuditorias}.`;
+        // Un Excel puede traer una o varias vigencias; solo se reemplazan las que trae.
+        const years = await QA.excelParser.listYears(file);
+        const reemplazan = years.map((y) => y.anio).filter((y) => state.years.includes(y));
+        if (reemplazan.length) {
+          hideLoading();
+          const conservan = state.years.filter((y) => !reemplazan.includes(y));
+          const ok = confirm(`Vas a reemplazar los datos de la vigencia ${reemplazan.join(", ")} con "${file.name}". ` +
+            (conservan.length ? `Las vigencias ${conservan.join(", ")} se conservan. ` : "") + "Esta acción no se puede deshacer. ¿Continuar?");
+          if (!ok) return;
+          showLoading("Leyendo el Excel…");
         }
+        const { vigencias } = await QA.excelImport.importFromExcel(file);
+        await QA.dataService.replaceVigencias(vigencias, { fileName: file.name, importedAt: new Date().toISOString() });
+        state.year = vigencias[vigencias.length - 1].anio; // se muestra lo recién cargado
+        await startApp();
+        let msg = "Carga completa:\n" + vigencias.map(({ resumen: r }) =>
+          `· Vigencia ${r.anio} (${r.hojaAuditorias}${r.hojaHallazgos ? " + " + r.hojaHallazgos : ""}): ${r.auditorias} auditorías, ${r.inspecciones} inspecciones, ${r.hallazgos} hallazgos (${r.hallazgosVinculados} vinculados a una auditoría).`
+        ).join("\n");
+        vigencias.forEach(({ resumen: r }) => {
+          if (r.hallazgosSinVincular) {
+            msg += `\n\nVigencia ${r.anio}: ${r.hallazgosSinVincular} hallazgo(s) no se pudieron vincular a ninguna auditoría. Auditados sin coincidencia:\n- ${r.nombresSinVincular.slice(0, 10).join("\n- ")}\n\nRevisa que el nombre en "NOMBRE AUDITADO" de ${r.hojaHallazgos} sea igual al de "Area o Proveedor" en ${r.hojaAuditorias}.`;
+          }
+        });
         alert(msg);
       } catch (e) {
         console.error(e);
@@ -705,7 +792,7 @@
       try {
         await QA.exportPdf.exportDashboardToPdf(
           ["secResumen", "secPrograma", "secInspecciones", "secHallazgos", "secFaa"],
-          { title: "Dashboard QA-OMA", onProgress: (i, total) => showLoading(`Generando PDF… (${i + 1}/${total})`) }
+          { title: `Dashboard QA-OMA — Vigencia ${state.year}`, onProgress: (i, total) => showLoading(`Generando PDF… (${i + 1}/${total})`) }
         );
       } catch (e) {
         console.error(e);
@@ -724,6 +811,7 @@
    * ------------------------------------------------------------------ */
   document.addEventListener("DOMContentLoaded", async () => {
     wireFilters();
+    wireYearPicker();
     wireNav();
     wireExcelImport();
     wireHeaderActions();

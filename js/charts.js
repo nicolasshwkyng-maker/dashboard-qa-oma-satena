@@ -338,6 +338,86 @@ QA.charts = (function () {
     renderProgramaPorUbicacion(QA.kpiEngine.programaPorUbicacion(inspeccionesSoloTipo), "chartInspUbicacion", handlers.onInspeccionesUbicacion);
   }
 
+  /* ------------------------------------------------------------------ *
+   * Comparativo de vigencias (ver js/comparativo.js): una serie por año
+   * (o una serie por concepto con los años en el eje X).
+   * ------------------------------------------------------------------ */
+  const YEAR_COLORS = [PALETTE.azulM, PALETTE.amarillo, PALETTE.azul, PALETTE.verde, PALETTE.rojo, PALETTE.grisM];
+  const yearColor = (i) => YEAR_COLORS[i % YEAR_COLORS.length];
+
+  function renderComparativo(model) {
+    const { years, perYear } = model;
+    const yearLabels = years.map((y) => (perYear[y].enCurso ? `${y} (en curso)` : String(y)));
+    const pctTooltip = { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y}%` } };
+
+    // 1. Cumplimiento y avance (%): años en el eje X, una barra por indicador
+    const cum = barConfig({
+      labels: yearLabels,
+      datasets: [
+        { label: "Cumplimiento cronograma original", data: years.map((y) => perYear[y].k.cumplimientoOriginalPct), backgroundColor: PALETTE.azulM, borderRadius: 4 },
+        { label: "Avance total (con no programadas)", data: years.map((y) => perYear[y].k.avanceTotalPct), backgroundColor: PALETTE.amarillo, borderRadius: 4 },
+      ],
+    });
+    cum.options.plugins.tooltip = pctTooltip;
+    cum.options.scales.y.ticks.callback = (v) => v + "%";
+    getOrCreate("chartCmpCumplimiento", cum);
+
+    // 2. Estado del programa (apilado)
+    getOrCreate("chartCmpEstado", barConfig({
+      labels: yearLabels, stacked: true,
+      datasets: [
+        { label: "Ejecutadas", data: years.map((y) => perYear[y].k.ejecutadas), backgroundColor: PALETTE.verde },
+        { label: "No ejecutadas", data: years.map((y) => perYear[y].k.noEjecutadas), backgroundColor: PALETTE.rojo },
+        { label: "Canceladas", data: years.map((y) => perYear[y].k.canceladas), backgroundColor: PALETTE.grisM },
+        { label: "Por ejecutar", data: years.map((y) => perYear[y].k.porEjecutar), backgroundColor: PALETTE.azulM },
+      ],
+    }));
+
+    // 3. Ejecutadas por mes: una serie por año
+    getOrCreate("chartCmpMes", barConfig({
+      labels: QA.utils.MONTH_ABBR,
+      datasets: years.map((y, i) => ({ label: yearLabels[i], data: perYear[y].ejecutadasPorMes, backgroundColor: yearColor(i), borderRadius: 3 })),
+    }));
+
+    // 4. Hallazgos por estado (apilado)
+    getOrCreate("chartCmpHallazgos", barConfig({
+      labels: yearLabels, stacked: true,
+      datasets: [
+        { label: "Abiertos", data: years.map((y) => perYear[y].k.hallazgosAbiertos), backgroundColor: PALETTE.rojo },
+        { label: "Cierre parcial", data: years.map((y) => perYear[y].k.hallazgosCierreParcial), backgroundColor: PALETTE.amarillo },
+        { label: "Cerrados", data: years.map((y) => perYear[y].k.hallazgosCerrados), backgroundColor: PALETTE.verde },
+      ],
+      tooltipFooter: (items) => "Total: " + items.reduce((n, i) => n + i.parsed.y, 0),
+    }));
+
+    // 5. NC vs OB
+    getOrCreate("chartCmpCondicion", barConfig({
+      labels: yearLabels,
+      datasets: [
+        { label: "No conformidades (NC)", data: years.map((y) => perYear[y].nc), backgroundColor: PALETTE.rojo, borderRadius: 4 },
+        { label: "Observaciones (OB)", data: years.map((y) => perYear[y].ob), backgroundColor: PALETTE.amarillo, borderRadius: 4 },
+      ],
+    }));
+
+    // 6. Auditorías por clasificación: una serie por año
+    const labels = [];
+    years.forEach((y) => Object.keys(perYear[y].clasificacion).forEach((l) => { if (!labels.includes(l)) labels.push(l); }));
+    labels.sort((a, b) => years.reduce((n, y) => n + (perYear[y].clasificacion[b] || 0), 0) - years.reduce((n, y) => n + (perYear[y].clasificacion[a] || 0), 0));
+    getOrCreate("chartCmpClasificacion", barConfig({
+      labels, horizontal: true,
+      datasets: years.map((y, i) => ({ label: yearLabels[i], data: labels.map((l) => perYear[y].clasificacion[l] || 0), backgroundColor: yearColor(i), borderRadius: 3 })),
+    }));
+
+    // 7. Inspecciones
+    getOrCreate("chartCmpInspecciones", barConfig({
+      labels: yearLabels,
+      datasets: [
+        { label: "Programadas", data: years.map((y) => perYear[y].ki.programadas), backgroundColor: PALETTE.azulM, borderRadius: 4 },
+        { label: "Ejecutadas", data: years.map((y) => perYear[y].ki.ejecutadas), backgroundColor: PALETTE.verde, borderRadius: 4 },
+      ],
+    }));
+  }
+
   /** Chart.js calcula el tamaño del canvas en el momento de crearlo: si el
    * gráfico se crea (o se actualiza) mientras su pestaña está oculta
    * (display:none), queda con tamaño 0. Se llama después de mostrar una
@@ -346,5 +426,5 @@ QA.charts = (function () {
     Object.values(instances).forEach((c) => { try { c.resize(); } catch (e) { /* noop */ } });
   }
 
-  return { renderAll, resizeAll, renderAuditoriasPorCierre };
+  return { renderAll, resizeAll, renderAuditoriasPorCierre, renderComparativo };
 })();

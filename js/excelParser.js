@@ -17,9 +17,14 @@ window.QA = window.QA || {};
 QA.excelParser = (function () {
   const u = QA.utils;
 
+  // Un mismo archivo se lee varias veces (una por hoja/vigencia): se parsea una sola vez.
+  const workbookCache = new WeakMap();
   async function readWorkbook(file) {
+    if (workbookCache.has(file)) return workbookCache.get(file);
     const buf = await file.arrayBuffer();
-    return XLSX.read(buf, { type: "array", cellDates: true, cellNF: false });
+    const wb = XLSX.read(buf, { type: "array", cellDates: true, cellNF: false });
+    workbookCache.set(file, wb);
+    return wb;
   }
 
   function sheetToRows(wb, sheetName) {
@@ -30,14 +35,27 @@ QA.excelParser = (function () {
   }
 
   /** Hoja de control de cualquier vigencia: "<PREFIJO>_<año>" (AUDITORIAS_2025,
-   *  HALLAZGOS_2026…). Si hay varias, se usa la del año más reciente. */
-  function findYearSheet(wb, prefix) {
+   *  HALLAZGOS_2026…). Con `anio` busca esa vigencia; sin él, la más reciente. */
+  function findYearSheet(wb, prefix, anio) {
     const re = new RegExp("^" + prefix + "_(\\d{4})$", "i");
-    const hits = wb.SheetNames.filter((n) => re.test(n)).sort((a, b) => b.localeCompare(a));
+    const hits = wb.SheetNames.filter((n) => re.test(n) && (!anio || String(anio) === n.match(re)[1])).sort((a, b) => b.localeCompare(a));
     if (!hits.length) {
-      throw new Error(`No hay una hoja "${prefix}_<año>" (por ejemplo ${prefix}_2026) en el archivo. Hojas disponibles: ${wb.SheetNames.join(", ")}`);
+      throw new Error(`No hay una hoja "${prefix}_${anio || "<año>"}" en el archivo. Hojas disponibles: ${wb.SheetNames.join(", ")}`);
     }
     return hits[0];
+  }
+
+  /** Vigencias presentes en el archivo: todas las que tienen hoja AUDITORIAS_<año>
+   *  (la hoja HALLAZGOS_<año> es opcional: sin ella la vigencia carga sin hallazgos). */
+  async function listYears(file) {
+    const wb = await readWorkbook(file);
+    const years = [];
+    wb.SheetNames.forEach((n) => {
+      const m = n.match(/^AUDITORIAS_(\d{4})$/i);
+      if (m) years.push({ anio: Number(m[1]), hojaAuditorias: n, hojaHallazgos: wb.SheetNames.find((h) => h.toUpperCase() === "HALLAZGOS_" + m[1]) || null });
+    });
+    if (!years.length) throw new Error(`No hay hojas "AUDITORIAS_<año>" en el archivo. Hojas disponibles: ${wb.SheetNames.join(", ")}`);
+    return years.sort((a, b) => a.anio - b.anio);
   }
 
   function isEmptyRow(row) {
@@ -176,9 +194,9 @@ QA.excelParser = (function () {
    * falta inferir nada de evidencia de archivos. La columna "Tipo"
    * distingue Auditorías de Inspecciones.
    * ------------------------------------------------------------------ */
-  async function parseAuditorias2026(file) {
+  async function parseAuditorias2026(file, anio) {
     const wb = await readWorkbook(file);
-    const hoja = findYearSheet(wb, "AUDITORIAS");
+    const hoja = findYearSheet(wb, "AUDITORIAS", anio);
     const rows = sheetToRows(wb, hoja);
     const out = [];
     out.hoja = hoja;
@@ -216,9 +234,9 @@ QA.excelParser = (function () {
    * completo. La columna "ESTADO" (hallazgo) ahora tiene 3 valores:
    * Abierto / Cerrado / Cierre Parcial.
    * ------------------------------------------------------------------ */
-  async function parseHallazgos2026(file) {
+  async function parseHallazgos2026(file, anio) {
     const wb = await readWorkbook(file);
-    const hoja = findYearSheet(wb, "HALLAZGOS");
+    const hoja = findYearSheet(wb, "HALLAZGOS", anio);
     const rows = sheetToRows(wb, hoja);
     const out = [];
     out.hoja = hoja;
@@ -267,5 +285,5 @@ QA.excelParser = (function () {
     return out;
   }
 
-  return { parseCronoDef, parseHallazgos, parseControlSatdsg, parseAuditorias2026, parseHallazgos2026 };
+  return { parseCronoDef, parseHallazgos, parseControlSatdsg, parseAuditorias2026, parseHallazgos2026, listYears };
 })();
