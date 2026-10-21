@@ -85,7 +85,8 @@ QA.filters = (function () {
     if (s.modalidad && a.modalidad !== s.modalidad) return false;
     if (s.ubicacion && a.ciudad !== s.ubicacion) return false;
     if (s.auditor && a.auditorResponsable !== s.auditor) return false;
-    if (s.estado && a.estadoCalculado !== s.estado) return false;
+    // "Por Ejecutar" incluye las "Programadas" (pendientes con fecha confirmada).
+    if (s.estado && (s.estado === "POR_EJECUTAR" ? !QA.statusEngine.esPendiente(a.estadoCalculado) : a.estadoCalculado !== s.estado)) return false;
     if (s.tipo && a.tipoAmplio !== s.tipo) return false;
     if (s.programacion === "Programada" && a.esExtraordinaria) return false;
     if (s.programacion === "No Programada" && !a.esExtraordinaria) return false;

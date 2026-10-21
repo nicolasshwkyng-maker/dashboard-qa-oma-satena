@@ -384,7 +384,7 @@ QA.config = {
     // Base
     blanco: "#FFFFFF", azul: "#1A2F49", acero: "#2E5F7F", amarillo: "#EDD656", rojo: "#912B2A", negro: "#000000",
     // Derivados
-    azulL: "#E3E9F0", aceroL: "#DCE8F0", amarilloL: "#FBF6D2", amarilloD: "#8C7A12",
+    azulL: "#E3E9F0", aceroL: "#DCE8F0", aceroM: "#6C9BB8", amarilloL: "#FBF6D2", amarilloD: "#8C7A12",
     rojoL: "#F4E2E2", verde: "#367857", verdeL: "#E0EEE7",
     gris: "#5C6B7A", grisL: "#ECEFF3", borde: "#D3D9E0",
   },

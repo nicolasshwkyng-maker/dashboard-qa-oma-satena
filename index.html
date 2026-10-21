@@ -73,7 +73,8 @@
     <div class="qa-filter"><label>Estatus</label>
       <select id="fEstado" class="form-select form-select-sm">
         <option value="">Todos</option>
-        <option value="POR_EJECUTAR">Por Ejecutar</option>
+        <option value="POR_EJECUTAR">Por Ejecutar (incl. programadas)</option>
+        <option value="PROGRAMADA">Programada (fecha confirmada)</option>
         <option value="EJECUTADA">Ejecutada</option>
         <option value="NO_EJECUTADA">No Ejecutada</option>
         <option value="CANCELADA">Cancelada</option>
@@ -326,6 +327,7 @@
             <div class="col-md-3"><label class="form-label">Estatus *</label>
               <select class="form-select form-select-sm" id="afEstatus" required>
                 <option value="Por Ejecutar">Por Ejecutar</option>
+                <option value="Programada">Programada (fecha confirmada)</option>
                 <option value="Ejecutada">Ejecutada</option>
                 <option value="No Ejecutada">No Ejecutada</option>
                 <option value="Cancelada">Cancelada</option>

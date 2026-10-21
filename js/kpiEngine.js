@@ -45,7 +45,9 @@ QA.kpiEngine = (function () {
     const ejecutadas = audits.filter(a => a.estadoCalculado === EST.EJECUTADA);
     const ejecutadasProgramadas = programadas.filter(a => a.estadoCalculado === EST.EJECUTADA);
     const extraordinariasEjecutadas = extraordinarias.filter(a => a.estadoCalculado === EST.EJECUTADA);
-    const porEjecutar = audits.filter(a => a.estadoCalculado === EST.POR_EJECUTAR);
+    // "Programada" (fecha confirmada) es un subestado de pendiente: suma en Por Ejecutar.
+    const porEjecutar = audits.filter(a => QA.statusEngine.esPendiente(a.estadoCalculado));
+    const estatusProgramada = audits.filter(a => a.estadoCalculado === EST.PROGRAMADA);
     const noEjecutadas = audits.filter(a => a.estadoCalculado === EST.NO_EJECUTADA);
     const canceladas = audits.filter(a => a.estadoCalculado === EST.CANCELADA);
 
@@ -78,6 +80,7 @@ QA.kpiEngine = (function () {
       extraordinarias: extraordinarias.length,
       extraordinariasEjecutadas: extraordinariasEjecutadas.length,
       porEjecutar: porEjecutar.length,
+      estatusProgramada: estatusProgramada.length,
       noEjecutadas: noEjecutadas.length,
       canceladas: canceladas.length,
       proximos30Dias: en30dias.length,
@@ -96,7 +99,7 @@ QA.kpiEngine = (function () {
       lists: {
         totalAuditorias: audits,
         programadas, ejecutadas, ejecutadasProgramadas, extraordinarias, extraordinariasEjecutadas,
-        porEjecutar, noEjecutadas, canceladas, proximos30Dias: en30dias,
+        porEjecutar, estatusProgramada, noEjecutadas, canceladas, proximos30Dias: en30dias,
         hallazgosTotal: findings, hallazgosAbiertos, hallazgosCerrados, hallazgosCierreParcial,
         auditoriasCerradas, auditoriasAbiertas, auditoriasCierreParcial,
       },
@@ -263,7 +266,7 @@ QA.kpiEngine = (function () {
   function auditoriasPorUbicacionItems(audits, label) { return itemsWhere(audits, keyUbicacion, label); }
 
   function estadoPrograma(audits) {
-    const order = ["Por Ejecutar", "Ejecutada", "No Ejecutada", "Cancelada", "Extraordinarias"];
+    const order = ["Por Ejecutar", "Programada", "Ejecutada", "No Ejecutada", "Cancelada", "Extraordinarias"];
     const counts = countBy(audits, a => a.donutBucket);
     const map = new Map(counts);
     return order.map(label => ({ label, value: map.get(label) || 0 }));

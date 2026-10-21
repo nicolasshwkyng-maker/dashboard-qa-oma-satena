@@ -287,7 +287,8 @@
       kpiGroupHtml("Ejecución", [
         kpiCardHtml("Ejecutados", k.ejecutadas, "Incluye extraordinarios ejecutados", "ejecutadas", "audits", "acero"),
         kpiCardHtml("Ejecutados Programados", k.ejecutadasProgramadas, "Ejecutados que SÍ estaban en el cronograma", "ejecutadasProgramadas", "audits", "acero"),
-        kpiCardHtml("Por Ejecutar", k.porEjecutar, null, "porEjecutar", "audits", "acero"),
+        kpiCardHtml("Por Ejecutar", k.porEjecutar, k.estatusProgramada ? `${k.estatusProgramada} con fecha confirmada (Programada)` : null, "porEjecutar", "audits", "acero"),
+        kpiCardHtml("Programada (fecha confirmada)", k.estatusProgramada, "Pendientes con fecha confirmada — incluidas en Por Ejecutar", "estatusProgramada", "audits", "acero"),
         kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits", "acero"),
         kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits", "acero"),
       ].join("")),
@@ -332,7 +333,8 @@
       kpiGroupHtml("Ejecución", [
         kpiCardHtml("Ejecutadas", k.ejecutadas, "Incluye no programadas ejecutadas", "ejecutadas", "audits", "acero"),
         kpiCardHtml("Ejecutadas Programadas", k.ejecutadasProgramadas, "Ejecutadas que SÍ estaban en el cronograma", "ejecutadasProgramadas", "audits", "acero"),
-        kpiCardHtml("Por Ejecutar", k.porEjecutar, null, "porEjecutar", "audits", "acero"),
+        kpiCardHtml("Por Ejecutar", k.porEjecutar, k.estatusProgramada ? `${k.estatusProgramada} con fecha confirmada (Programada)` : null, "porEjecutar", "audits", "acero"),
+        kpiCardHtml("Programada (fecha confirmada)", k.estatusProgramada, "Pendientes con fecha confirmada — incluidas en Por Ejecutar", "estatusProgramada", "audits", "acero"),
         kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits", "acero"),
         kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits", "acero"),
       ].join("")),

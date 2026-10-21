@@ -93,7 +93,7 @@ exacto de columnas):
 ### ¿Cuándo se considera "ejecutada" una auditoría?
 
 Ya no se infiere de nada: viene directo de la columna **Estatus** del
-Excel (`Por Ejecutar` / `Ejecutada` / `No Ejecutada` / `Cancelada`) — ver
+Excel (`Por Ejecutar` / `Programada` / `Ejecutada` / `No Ejecutada` / `Cancelada`; "Programada" = pendiente con fecha confirmada, cuenta dentro de Por Ejecutar) — ver
 `js/statusEngine.js#computeEstado`.
 
 ### ¿Cuándo se considera "cerrada" una auditoría ejecutada?

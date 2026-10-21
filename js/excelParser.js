@@ -208,7 +208,7 @@ QA.excelParser = (function () {
       const tipoRaw = (r[3] || "").toString().trim();
       out.push({
         idAuditado: r[0],
-        estatus: (r[1] || "").toString().trim() || null, // Por Ejecutar / Ejecutada / No Ejecutada / Cancelada
+        estatus: (r[1] || "").toString().trim() || null, // Por Ejecutar / Programada / Ejecutada / No Ejecutada / Cancelada
         esNoProgramadaEnCrono: u.normalize(programadaRaw) === u.normalize("No programada"),
         tipoRegistro: u.normalize(tipoRaw) === u.normalize("Inspección") ? "INSPECCION" : "AUDITORIA",
         clasificacionRaw: (r[4] || "").toString().trim(),

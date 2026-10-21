@@ -28,6 +28,7 @@ QA.charts = (function () {
 
   const DONUT_BUCKET_COLORS = {
     "Por Ejecutar": PALETTE.azulM,
+    "Programada": P.aceroM,
     "Ejecutada": PALETTE.verde,
     "No Ejecutada": PALETTE.rojo,
     "Cancelada": PALETTE.grisM,
@@ -369,7 +370,7 @@ QA.charts = (function () {
         { label: "Ejecutadas", data: years.map((y) => perYear[y].k.ejecutadas), backgroundColor: PALETTE.verde },
         { label: "No ejecutadas", data: years.map((y) => perYear[y].k.noEjecutadas), backgroundColor: PALETTE.rojo },
         { label: "Canceladas", data: years.map((y) => perYear[y].k.canceladas), backgroundColor: PALETTE.grisM },
-        { label: "Por ejecutar", data: years.map((y) => perYear[y].k.porEjecutar), backgroundColor: PALETTE.azulM },
+        { label: "Por ejecutar (incl. programadas)", data: years.map((y) => perYear[y].k.porEjecutar), backgroundColor: PALETTE.azulM },
       ],
     }));
 

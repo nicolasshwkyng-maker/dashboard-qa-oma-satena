@@ -9,7 +9,10 @@
  * partir de sus hallazgos vinculados).
  *
  * Estados posibles de auditoría (QA.statusEngine.ESTADOS):
- *   POR_EJECUTAR, EJECUTADA, NO_EJECUTADA, CANCELADA
+ *   POR_EJECUTAR, PROGRAMADA, EJECUTADA, NO_EJECUTADA, CANCELADA
+ *   PROGRAMADA = pendiente con fecha confirmada: es un subestado de "Por
+ *   Ejecutar" (cuenta dentro de sus KPIs, brecha y próximos 30 días — ver
+ *   esPendiente) pero se distingue en tarjetas, tablas y el gráfico de estado.
  *
  * Estados posibles de cierre (hallazgo individual, o rollup de auditoría):
  *   ABIERTO, CERRADO, CIERRE_PARCIAL
@@ -22,11 +25,12 @@ window.QA = window.QA || {};
 
 QA.statusEngine = (function () {
   const u = QA.utils;
-  const ESTADOS = { POR_EJECUTAR: "POR_EJECUTAR", EJECUTADA: "EJECUTADA", NO_EJECUTADA: "NO_EJECUTADA", CANCELADA: "CANCELADA" };
+  const ESTADOS = { POR_EJECUTAR: "POR_EJECUTAR", PROGRAMADA: "PROGRAMADA", EJECUTADA: "EJECUTADA", NO_EJECUTADA: "NO_EJECUTADA", CANCELADA: "CANCELADA" };
   const CIERRE = { ABIERTO: "ABIERTO", CERRADO: "CERRADO", CIERRE_PARCIAL: "CIERRE_PARCIAL" };
 
   const ESTATUS_TEXT_TO_ESTADO = {
     "POR EJECUTAR": ESTADOS.POR_EJECUTAR,
+    "PROGRAMADA": ESTADOS.PROGRAMADA,
     "EJECUTADA": ESTADOS.EJECUTADA,
     "NO EJECUTADA": ESTADOS.NO_EJECUTADA,
     "CANCELADA": ESTADOS.CANCELADA,
@@ -35,6 +39,9 @@ QA.statusEngine = (function () {
   function computeEstado(audit) {
     return ESTATUS_TEXT_TO_ESTADO[u.normalize(audit.estatus)] || ESTADOS.POR_EJECUTAR;
   }
+
+  /** Pendiente de ejecutar: "Por Ejecutar" o "Programada" (fecha confirmada). */
+  function esPendiente(estado) { return estado === ESTADOS.POR_EJECUTAR || estado === ESTADOS.PROGRAMADA; }
 
   const CIERRE_TEXT_TO_CONST = {
     "ABIERTO": CIERRE.ABIERTO,
@@ -90,7 +97,7 @@ QA.statusEngine = (function () {
    */
   function computeDonutBucket(audit) {
     if (audit.esExtraordinaria) return "Extraordinarias";
-    const labels = { POR_EJECUTAR: "Por Ejecutar", EJECUTADA: "Ejecutada", NO_EJECUTADA: "No Ejecutada", CANCELADA: "Cancelada" };
+    const labels = { POR_EJECUTAR: "Por Ejecutar", PROGRAMADA: "Programada", EJECUTADA: "Ejecutada", NO_EJECUTADA: "No Ejecutada", CANCELADA: "Cancelada" };
     return labels[audit.estadoCalculado] || "Por Ejecutar";
   }
 
@@ -122,5 +129,5 @@ QA.statusEngine = (function () {
     return audits;
   }
 
-  return { ESTADOS, CIERRE, computeEstado, computeCierreHallazgo, computeCierreManual, computeAuditoriaRollup, computeDonutBucket, computeFechaReferencia, applyAll };
+  return { ESTADOS, CIERRE, esPendiente, computeEstado, computeCierreHallazgo, computeCierreManual, computeAuditoriaRollup, computeDonutBucket, computeFechaReferencia, applyAll };
 })();
