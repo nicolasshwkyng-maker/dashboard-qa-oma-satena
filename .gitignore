@@ -5,3 +5,6 @@ node_modules/
 Comparativo_Migracion_QA_OMA.xlsx
 Auditorias_Ejecutadas_Abiertas.xlsx
 Control_Auditorias_2026_SATENA.xlsx
+
+# Configuración local de Claude Code
+.claude/
