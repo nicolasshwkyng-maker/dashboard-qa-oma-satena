@@ -240,8 +240,51 @@
     document.getElementById("fProgramacion").value = s.programacion || "";
   }
 
+  // <select> de la barra de filtros -> clave en QA.filters
+  const FILTER_SELECTS = { fMes: "mes", fClasificacion: "clasificacion", fTipo: "tipo", fProveedor: "proveedor", fAreaInterna: "areaInterna", fModalidad: "modalidad", fUbicacion: "ubicacion", fAuditor: "auditor", fEstado: "estado", fProgramacion: "programacion" };
+  const FILTERS_OPEN_KEY = "qa_satena_dashboard_filtros_abiertos";
+
+  /** Chips de filtros activos (barra colapsada): "Campo: valor ×". */
+  function renderFilterChips() {
+    const box = document.getElementById("filterChips");
+    const chips = [];
+    Object.entries(FILTER_SELECTS).forEach(([elId, key]) => {
+      const sel = document.getElementById(elId);
+      if (!sel || !sel.value) return;
+      const label = sel.closest(".qa-filter").querySelector("label").textContent;
+      const text = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : sel.value;
+      chips.push(`<span class="qa-filter-chip">${u.escapeHtml(label)}: <strong>${u.escapeHtml(text)}</strong><button type="button" data-clear="${elId}" aria-label="Quitar filtro ${u.escapeHtml(label)}">×</button></span>`);
+    });
+    box.innerHTML = chips.length ? chips.join("") : '<span class="qa-filter-chips-empty">Sin filtros: se muestra todo el programa de la vigencia.</span>';
+    const count = document.getElementById("filtersCount");
+    count.textContent = chips.length;
+    count.classList.toggle("d-none", !chips.length);
+  }
+
+  function setFiltersOpen(open) {
+    document.getElementById("filtersBody").classList.toggle("d-none", !open);
+    const btn = document.getElementById("btnToggleFilters");
+    btn.setAttribute("aria-expanded", String(open));
+    btn.querySelector(".qa-filters-toggle-icon").textContent = open ? "▾" : "▸";
+    try { localStorage.setItem(FILTERS_OPEN_KEY, open ? "1" : "0"); } catch (e) { /* no crítico */ }
+  }
+
   function wireFilters() {
-    const map = { fMes: "mes", fClasificacion: "clasificacion", fTipo: "tipo", fProveedor: "proveedor", fAreaInterna: "areaInterna", fModalidad: "modalidad", fUbicacion: "ubicacion", fAuditor: "auditor", fEstado: "estado", fProgramacion: "programacion" };
+    const map = FILTER_SELECTS;
+    let abiertos = false;
+    try { abiertos = localStorage.getItem(FILTERS_OPEN_KEY) === "1"; } catch (e) { /* no crítico */ }
+    setFiltersOpen(abiertos);
+    document.getElementById("btnToggleFilters").addEventListener("click", () => {
+      setFiltersOpen(document.getElementById("filtersBody").classList.contains("d-none"));
+    });
+    document.getElementById("filterChips").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-clear]");
+      if (!btn) return;
+      const elId = btn.dataset.clear;
+      document.getElementById(elId).value = "";
+      QA.filters.setValue(FILTER_SELECTS[elId], "");
+      renderEverything();
+    });
     Object.entries(map).forEach(([elId, key]) => {
       document.getElementById(elId).addEventListener("change", (e) => {
         QA.filters.setValue(key, e.target.value);
@@ -277,6 +320,58 @@
     return `<div class="qa-kpi-group"><div class="qa-kpi-group-title">${u.escapeHtml(title)}</div><div class="qa-kpi-grid">${cardsHtml}</div></div>`;
   }
 
+  /* ------------------------------------------------------------------ *
+   * Franja de indicadores clave (arriba del Resumen Ejecutivo): lo que un
+   * directivo mira primero, con semáforo. Respeta los filtros activos y
+   * cada tarjeta abre el detalle (mismo modal que las tarjetas KPI).
+   * ------------------------------------------------------------------ */
+  function heroCardHtml({ label, value, unit, sub, tone, listKey, kind, bar }) {
+    const attrs = listKey ? ` data-kpi-list="${listKey}" data-kpi-kind="${kind || "audits"}" data-kpi-title="${u.escapeHtml(label)}" role="button" tabindex="0"` : "";
+    const barHtml = bar ? `<div class="qa-hero-bar" title="Meta a hoy: ${bar.meta}%"><div class="fill" style="width:${Math.min(100, Math.max(0, bar.value / bar.max * 100))}%"></div><div class="meta" style="left:${Math.min(100, bar.meta / bar.max * 100)}%"></div></div>` : "";
+    return `<div class="qa-hero-card qa-hero--${tone}${listKey ? " qa-kpi-clickable" : ""}"${attrs}>
+      <div class="qa-hero-label">${u.escapeHtml(label)}</div>
+      <div class="qa-hero-value">${u.escapeHtml(String(value))}${unit ? `<span class="qa-hero-unit">${unit}</span>` : ""}</div>
+      ${barHtml}
+      <div class="qa-hero-sub">${sub}</div>
+    </div>`;
+  }
+
+  function renderHero(k, g, gTotal) {
+    const pts = (n) => `${n >= 0 ? "+" : "−"}${Math.abs(n)} pts`;
+    const reales = k.lists.hallazgosAbiertos;
+    const ncAb = reales.filter((f) => f.condicion === "NC").length;
+    const obAb = reales.filter((f) => f.condicion === "OB").length;
+    const abiertasTotal = k.auditoriasAbiertas + k.auditoriasCierreParcial;
+    document.getElementById("kpiHero").innerHTML = [
+      heroCardHtml({
+        label: "Cumplimiento del cronograma", value: k.cumplimientoOriginalPct, unit: "%", listKey: "ejecutadasProgramadas",
+        tone: g.brechaPct >= 0 ? "ok" : "behind", bar: { value: g.realPct, meta: g.esperadoPct, max: 100 },
+        sub: `Meta a hoy ${g.esperadoPct}% · <b>${pts(g.brechaPct)}</b>`,
+      }),
+      heroCardHtml({
+        label: "Avance total (con no programadas)", value: k.avanceTotalPct, unit: "%", listKey: "ejecutadas",
+        tone: gTotal.brechaPct >= 0 ? "ok" : "behind", bar: { value: gTotal.realPct, meta: gTotal.esperadoPct, max: Math.max(100, gTotal.realPct) },
+        sub: `Meta a hoy ${gTotal.esperadoPct}% · <b>${pts(gTotal.brechaPct)}</b>`,
+      }),
+      heroCardHtml({
+        label: "Auditorías ejecutadas", value: k.ejecutadas, listKey: "ejecutadas", tone: "neutral",
+        sub: `${k.ejecutadasProgramadas} de ${k.programadas} programadas · ${k.extraordinariasEjecutadas} no programadas`,
+      }),
+      heroCardHtml({
+        label: "Pendientes por ejecutar", value: k.porEjecutar, listKey: "porEjecutar", tone: "info",
+        sub: `${k.estatusProgramada} con fecha confirmada · ${k.proximos30Dias} en los próximos 30 días`,
+      }),
+      heroCardHtml({
+        label: "Auditorías sin cerrar", value: abiertasTotal, listKey: "auditoriasAbiertas", tone: abiertasTotal ? "behind" : "ok",
+        sub: `${k.auditoriasAbiertas} abiertas · ${k.auditoriasCierreParcial} cierre parcial · ${k.auditoriasCerradas} cerradas`,
+      }),
+      heroCardHtml({
+        label: "Hallazgos abiertos", value: k.hallazgosAbiertos, listKey: "hallazgosAbiertos", kind: "findings", tone: k.hallazgosAbiertos ? "behind" : "ok",
+        sub: `${ncAb} NC · ${obAb} OB abiertas · ${k.hallazgosCierreParcial} en cierre parcial · de ${k.hallazgosTotal}`,
+      }),
+    ].join("");
+  }
+
   function renderKpis(k) {
     document.getElementById("kpiGridResumen").innerHTML = [
       kpiGroupHtml("Programa", [
@@ -292,10 +387,7 @@
         kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits", "acero"),
         kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits", "acero"),
       ].join("")),
-      kpiGroupHtml("Cumplimiento", [
-        kpiCardHtml("% Cumplimiento Cronograma Original", k.cumplimientoOriginalPct + "%", "Ejecutados programados / Total programado (nunca > 100%)", "ejecutadasProgramadas", "audits", "amarillo"),
-        kpiCardHtml("% Avance Total del Programa", k.avanceTotalPct + "%", "Incluye extraordinarios ejecutados — puede superar 100%", "ejecutadas", "audits", "amarillo"),
-      ].join("")),
+      // Cumplimiento y avance: ya están en la franja de indicadores clave (renderHero).
       kpiGroupHtml("Cierre de Auditorías Ejecutadas", [
         kpiCardHtml("Cerradas", k.auditoriasCerradas, "Sin hallazgos o todos cerrados", "auditoriasCerradas", "audits", "verde"),
         kpiCardHtml("Abiertas", k.auditoriasAbiertas, "Con hallazgos abiertos (o marcadas Abierta)", "auditoriasAbiertas", "audits", "verde"),
@@ -411,7 +503,7 @@
   }
 
   function wireKpiModals() {
-    const kpiSource = { kpiGridResumen: "lastKpis", kpiGridHallazgos: "lastKpis", kpiGridResumenInsp: "lastKpisInsp" };
+    const kpiSource = { kpiHero: "lastKpis", kpiGridResumen: "lastKpis", kpiGridHallazgos: "lastKpis", kpiGridResumenInsp: "lastKpisInsp" };
     Object.keys(kpiSource).forEach((gridId) => {
       const grid = document.getElementById(gridId);
       const trigger = (e) => {
@@ -686,6 +778,7 @@
 
     const k = QA.kpiEngine.computeKpis(auditoriasSoloTipo, findings);
     state.lastKpis = k;
+    renderHero(k, QA.kpiEngine.avanceEsperadoVsReal(auditoriasSoloTipo), QA.kpiEngine.avanceEsperadoVsRealConNoProgramadas(auditoriasSoloTipo));
     renderKpis(k);
 
     const kInsp = QA.kpiEngine.computeKpis(inspeccionesSoloTipo, []);
@@ -709,6 +802,7 @@
     // se usan para el rollup de cierre de la auditoría.
     QA.tables.updateHallazgosTable(QA.kpiEngine.hallazgosReales(findings), openHallazgoForm);
     renderFaaPanel(auditoriasSoloTipo);
+    renderFilterChips();
     QA.charts.resizeAll();
   }
 

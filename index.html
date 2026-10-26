@@ -62,38 +62,47 @@
   </nav>
 
   <div class="qa-filters-bar no-print" id="filtersBar">
-    <div class="qa-filter"><label>Mes</label><select id="fMes" class="form-select form-select-sm"><option value="">Todos</option></select></div>
-    <div class="qa-filter"><label>Clasificación</label><select id="fClasificacion" class="form-select form-select-sm"><option value="">Todas</option></select></div>
-    <div class="qa-filter"><label>Tipo</label><select id="fTipo" class="form-select form-select-sm"><option value="">Todos</option></select></div>
-    <div class="qa-filter"><label>Proveedor</label><select id="fProveedor" class="form-select form-select-sm"><option value="">Todos</option></select></div>
-    <div class="qa-filter"><label>Área Interna</label><select id="fAreaInterna" class="form-select form-select-sm"><option value="">Todas</option></select></div>
-    <div class="qa-filter"><label>Modalidad</label><select id="fModalidad" class="form-select form-select-sm"><option value="">Todas</option></select></div>
-    <div class="qa-filter"><label>Ubicación</label><select id="fUbicacion" class="form-select form-select-sm"><option value="">Todas</option></select></div>
-    <div class="qa-filter"><label>Auditor</label><select id="fAuditor" class="form-select form-select-sm"><option value="">Todos</option></select></div>
-    <div class="qa-filter"><label>Estatus</label>
-      <select id="fEstado" class="form-select form-select-sm">
-        <option value="">Todos</option>
-        <option value="POR_EJECUTAR">Por Ejecutar (incl. programadas)</option>
-        <option value="PROGRAMADA">Programada (fecha confirmada)</option>
-        <option value="EJECUTADA">Ejecutada</option>
-        <option value="NO_EJECUTADA">No Ejecutada</option>
-        <option value="CANCELADA">Cancelada</option>
-      </select>
+    <div class="qa-filters-summary">
+      <button type="button" class="btn btn-sm qa-filters-toggle" id="btnToggleFilters" aria-expanded="false" aria-controls="filtersBody">
+        <span class="qa-filters-toggle-icon" aria-hidden="true">▸</span> Filtros <span class="qa-filters-count d-none" id="filtersCount"></span>
+      </button>
+      <div class="qa-filter-chips" id="filterChips"><span class="qa-filter-chips-empty">Sin filtros: se muestra todo el programa de la vigencia.</span></div>
+      <button class="btn btn-outline-qa btn-sm qa-filter-clear" id="btnClearFilters">Limpiar filtros</button>
     </div>
-    <div class="qa-filter"><label>Programación</label>
-      <select id="fProgramacion" class="form-select form-select-sm">
-        <option value="">Todas</option>
-        <option value="Programada">Programada</option>
-        <option value="No Programada">No Programada</option>
-      </select>
+    <div class="qa-filters-body d-none" id="filtersBody">
+      <div class="qa-filter"><label>Mes</label><select id="fMes" class="form-select form-select-sm"><option value="">Todos</option></select></div>
+      <div class="qa-filter"><label>Clasificación</label><select id="fClasificacion" class="form-select form-select-sm"><option value="">Todas</option></select></div>
+      <div class="qa-filter"><label>Tipo</label><select id="fTipo" class="form-select form-select-sm"><option value="">Todos</option></select></div>
+      <div class="qa-filter"><label>Proveedor</label><select id="fProveedor" class="form-select form-select-sm"><option value="">Todos</option></select></div>
+      <div class="qa-filter"><label>Área Interna</label><select id="fAreaInterna" class="form-select form-select-sm"><option value="">Todas</option></select></div>
+      <div class="qa-filter"><label>Modalidad</label><select id="fModalidad" class="form-select form-select-sm"><option value="">Todas</option></select></div>
+      <div class="qa-filter"><label>Ubicación</label><select id="fUbicacion" class="form-select form-select-sm"><option value="">Todas</option></select></div>
+      <div class="qa-filter"><label>Auditor</label><select id="fAuditor" class="form-select form-select-sm"><option value="">Todos</option></select></div>
+      <div class="qa-filter"><label>Estatus</label>
+        <select id="fEstado" class="form-select form-select-sm">
+          <option value="">Todos</option>
+          <option value="POR_EJECUTAR">Por Ejecutar (incl. programadas)</option>
+          <option value="PROGRAMADA">Programada (fecha confirmada)</option>
+          <option value="EJECUTADA">Ejecutada</option>
+          <option value="NO_EJECUTADA">No Ejecutada</option>
+          <option value="CANCELADA">Cancelada</option>
+        </select>
+      </div>
+      <div class="qa-filter"><label>Programación</label>
+        <select id="fProgramacion" class="form-select form-select-sm">
+          <option value="">Todas</option>
+          <option value="Programada">Programada</option>
+          <option value="No Programada">No Programada</option>
+        </select>
+      </div>
     </div>
-    <button class="btn btn-outline-qa btn-sm qa-filter-clear" id="btnClearFilters">Limpiar filtros</button>
   </div>
 
   <main id="qaMain">
 
     <!-- ============================= RESUMEN EJECUTIVO ============================= -->
     <section id="secResumen" class="qa-section">
+      <div class="qa-hero" id="kpiHero" aria-label="Indicadores clave de auditorías"></div>
       <div class="qa-band">Auditorías</div>
       <div class="qa-resumen-columns">
         <div class="qa-resumen-col-kpis" id="kpiGridResumen"></div>

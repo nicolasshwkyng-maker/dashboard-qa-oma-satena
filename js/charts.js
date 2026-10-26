@@ -28,7 +28,7 @@ QA.charts = (function () {
 
   const DONUT_BUCKET_COLORS = {
     "Por Ejecutar": PALETTE.azulM,
-    "Programada": P.aceroM,
+    "Programada": P.celeste,
     "Ejecutada": PALETTE.verde,
     "No Ejecutada": PALETTE.rojo,
     "Cancelada": PALETTE.grisM,
@@ -41,10 +41,8 @@ QA.charts = (function () {
     "Cierre Parcial": PALETTE.amarillo,
   };
 
-  const CATEGORY_SERIES_COLORS = Object.values(QA.config.CATEGORY_COLORS).map(c => c[0]);
-
   if (window.Chart) {
-    Chart.defaults.font.family = "'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.font.family = "'Gordita', 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif";
     Chart.defaults.color = PALETTE.grisM;
     Chart.defaults.plugins.legend.labels.usePointStyle = true;
     Chart.defaults.plugins.legend.labels.boxWidth = 8;
@@ -141,7 +139,7 @@ QA.charts = (function () {
 
         ctx.save();
         ctx.fillStyle = PALETTE.gris;
-        ctx.font = "600 11px 'IBM Plex Sans', sans-serif";
+        ctx.font = "600 11px 'Gordita', 'IBM Plex Sans', sans-serif";
         const label = `Meta hoy: ${esperadoPct}%`;
         const textWidth = ctx.measureText(label).width;
         const nearRightEdge = x + textWidth + 8 > chartArea.right;
@@ -225,13 +223,22 @@ QA.charts = (function () {
 
   /** `canvasId` parametrizable para poder reusar el mismo gráfico en la
    * sección Auditorías (default) y en Inspecciones (ver app.js). */
+  /** Nombre corto para el eje (los nombres completos de clasificación se
+   * cortaban); el completo queda en el tooltip y en el drill-down. */
+  const shortCat = (label) => (QA.config.CATEGORY_SHORT_LABELS || {})[label] || label;
+  const fullTitleTooltip = (fullLabels) => ({ callbacks: { title: (items) => (items[0] ? fullLabels[items[0].dataIndex] : "") } });
+
   function renderPorClasificacion(pairs, canvasId, onClick) {
-    getOrCreate(canvasId || "chartClasificacion", barConfig({
-      labels: pairs.map(p => p[0]),
+    const full = pairs.map(p => p[0]);
+    const cfg = barConfig({
+      labels: full.map(shortCat),
       horizontal: true,
-      datasets: [{ label: "Registros", data: pairs.map(p => p[1]), backgroundColor: CATEGORY_SERIES_COLORS, borderRadius: 4 }],
-      onClick,
-    }));
+      // Un solo color (ranking): los colores por posición no correspondían a la categoría.
+      datasets: [{ label: "Registros", data: pairs.map(p => p[1]), backgroundColor: PALETTE.azulM, borderRadius: 4 }],
+      onClick: onClick ? (label, dsLabel, index) => onClick(full[index] || label, dsLabel, index) : undefined,
+    });
+    cfg.options.plugins.tooltip = fullTitleTooltip(full);
+    getOrCreate(canvasId || "chartClasificacion", cfg);
   }
 
   function renderPorModalidad(pairs, canvasId, onClick) {
@@ -404,10 +411,12 @@ QA.charts = (function () {
     const labels = [];
     years.forEach((y) => Object.keys(perYear[y].clasificacion).forEach((l) => { if (!labels.includes(l)) labels.push(l); }));
     labels.sort((a, b) => years.reduce((n, y) => n + (perYear[y].clasificacion[b] || 0), 0) - years.reduce((n, y) => n + (perYear[y].clasificacion[a] || 0), 0));
-    getOrCreate("chartCmpClasificacion", barConfig({
-      labels, horizontal: true,
+    const cla = barConfig({
+      labels: labels.map(shortCat), horizontal: true,
       datasets: years.map((y, i) => ({ label: yearLabels[i], data: labels.map((l) => perYear[y].clasificacion[l] || 0), backgroundColor: yearColor(i), borderRadius: 3 })),
-    }));
+    });
+    cla.options.plugins.tooltip = fullTitleTooltip(labels);
+    getOrCreate("chartCmpClasificacion", cla);
 
     // 7. Inspecciones
     getOrCreate("chartCmpInspecciones", barConfig({

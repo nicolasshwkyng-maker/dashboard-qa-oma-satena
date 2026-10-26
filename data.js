@@ -372,36 +372,54 @@ QA.config = {
   },
 
   /* ------------------------------------------------------------------ *
-   * 6.5 Paleta de colores. Los 6 colores base son los de la identidad
-   * visual del dashboard (blanco, azul marino, amarillo, rojo oscuro,
-   * negro y azul acero); el resto son tonos/tintes derivados de ellos (más
-   * un verde apagado para "ejecutada/cerrada", que la paleta base no
-   * tiene). styles.css repite estos mismos valores como variables CSS
-   * (:root) — si se cambia uno, cambiar el otro.
+   * 6.5 Paleta institucional — tema "Paleta_SATENA" de la plantilla de
+   *    presentaciones corporativa (dk1, lt2, accent1-4). Regla de la
+   *    plantilla: usar únicamente estos colores institucionales; los demás
+   *    son tintes/tonos derivados de ellos (fondos claros, texto legible).
+   *      azul     #12304B  dk1     encabezado, títulos, tablas, botones
+   *      acero    #156082  accent1 series principales, "Por Ejecutar"
+   *      amarillo #F2D532  accent2 acentos, no programadas, cierre parcial
+   *      rojo     #9E1E24  lt2     alertas, no ejecutadas, abiertas
+   *      verde    #196B24  accent3 ejecutadas, cerradas, metas cumplidas
+   *      celeste  #0F9ED5  accent4 "Programada" (fecha confirmada), 2.ª serie
+   *    El amarillo y el celeste NO se usan como color de texto sobre blanco
+   *    (contraste bajo): para texto están amarilloD y celesteD.
+   *    styles.css repite estos valores como variables CSS (:root) — si se
+   *    cambia uno, cambiar el otro.
    * CATEGORY_COLORS: [texto, fondo claro] por categoría de clasificación.
    * ------------------------------------------------------------------ */
   PALETTE: {
-    // Base
-    blanco: "#FFFFFF", azul: "#1A2F49", acero: "#2E5F7F", amarillo: "#EDD656", rojo: "#912B2A", negro: "#000000",
-    // Derivados
-    azulL: "#E3E9F0", aceroL: "#DCE8F0", aceroM: "#6C9BB8", amarilloL: "#FBF6D2", amarilloD: "#8C7A12",
-    rojoL: "#F4E2E2", verde: "#367857", verdeL: "#E0EEE7",
-    gris: "#5C6B7A", grisL: "#ECEFF3", borde: "#D3D9E0",
+    // Base institucional
+    blanco: "#FFFFFF", azul: "#12304B", acero: "#156082", amarillo: "#F2D532", rojo: "#9E1E24",
+    verde: "#196B24", celeste: "#0F9ED5", negro: "#000000",
+    // Derivados (tintes para fondos / tonos para texto)
+    azulL: "#E2E8EF", aceroL: "#DCEBF2", celesteL: "#DDF2FB", celesteD: "#0B6E96",
+    amarilloL: "#FDF7D1", amarilloD: "#7D6A00", rojoL: "#F6E2E3", verdeL: "#E1EFE3",
+    gris: "#5B6B7B", grisL: "#EDF0F4", borde: "#D2D9E1",
   },
 
   CATEGORY_COLORS: {
-    OMA: ["#2E5F7F", "#DCE8F0"],
-    OMA_EXT: ["#1A2F49", "#E3E9F0"],
-    PROVEEDOR: ["#367857", "#E0EEE7"],
-    LABORATORIO_CALIBRACION: ["#8C7A12", "#FBF6D2"],
-    MANTENIMIENTO_ETAA: ["#912B2A", "#F4E2E2"],
-    CIAC: ["#4A6785", "#E6EBF1"],
-    AREA_INTERNA: ["#5C6B7A", "#ECEFF3"],
-    AUMENTO_CAPACIDADES: ["#A8641F", "#F7EBDD"],
-    INSPECCION: ["#2A7F8E", "#DDF0F3"],
+    OMA: ["#156082", "#DCEBF2"],
+    OMA_EXT: ["#12304B", "#E2E8EF"],
+    PROVEEDOR: ["#196B24", "#E1EFE3"],
+    LABORATORIO_CALIBRACION: ["#7D6A00", "#FDF7D1"],
+    MANTENIMIENTO_ETAA: ["#9E1E24", "#F6E2E3"],
+    CIAC: ["#0B6E96", "#DDF2FB"],
+    AREA_INTERNA: ["#5B6B7B", "#EDF0F4"],
+    AUMENTO_CAPACIDADES: ["#12304B", "#FDF7D1"],
+    INSPECCION: ["#156082", "#FDF7D1"],
   },
 
-  /* ------------------------------------------------------------------ *
+  /** Nombres cortos para ejes de gráficos (el nombre completo se ve en el tooltip). */
+  CATEGORY_SHORT_LABELS: {
+    "Organización de Mantenimiento Aprobada (OMA)": "OMA",
+    "OMA - Exterior (T.A.R.E)": "OMA Exterior (T.A.R.E)",
+    "Centro de Instrucción de Aeronáutica Civil (CIAC)": "CIAC",
+    "Inspección de Actividades de Mantenimiento": "Inspección de Mantenimiento",
+    "Laboratorio de Calibración": "Lab. de Calibración",
+  },
+
+    /* ------------------------------------------------------------------ *
    * 7. Vocabulario de estados (tal como aparece en las fuentes, para
    *    normalizarlo de forma consistente).
    * ------------------------------------------------------------------ */

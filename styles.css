@@ -1,9 +1,11 @@
 /**
  * styles.css — Sistema visual del Dashboard QA-OMA
  * ============================================================================
- * Paleta institucional (blanco, azul marino, amarillo, rojo oscuro, negro y
- * azul acero + tonos derivados — ver :root) y tipografía IBM Plex Sans/Mono,
- * autoalojada en assets/fonts para que la app funcione sin internet.
+ * Paleta institucional "Paleta_SATENA" (tema de la plantilla corporativa de
+ * presentaciones: azul #12304B, acero #156082, amarillo #F2D532, rojo
+ * #9E1E24, verde #196B24, celeste #0F9ED5) + tintes derivados — ver :root.
+ * Tipografía: Gordita (la de la plantilla) si está instalada en el equipo;
+ * si no, IBM Plex Sans/Mono autoalojada en assets/fonts (funciona sin internet).
  */
 
 /* ---------------------------- Tipografía autoalojada ---------------------------- */
@@ -30,21 +32,24 @@
 }
 
 :root {
-  /* Paleta base (mantener en sync con QA.config.PALETTE en data.js) */
+  /* Paleta institucional (mantener en sync con QA.config.PALETTE en data.js) */
   --blanco: #FFFFFF;
-  --azul: #1A2F49;          /* azul marino: encabezado, títulos, tablas, botones */
-  --azul-m: #2E5F7F;        /* azul acero: secundario */
-  --amarillo: #EDD656;      /* acento */
-  --rojo: #912B2A;
+  --azul: #12304B;          /* dk1: encabezado, títulos, tablas, botones */
+  --azul-m: #156082;        /* accent1 (acero): secundario, series principales */
+  --amarillo: #F2D532;      /* accent2: acentos (nunca como texto sobre blanco) */
+  --rojo: #9E1E24;          /* lt2: alertas, abiertas, no ejecutadas */
+  --verde: #196B24;         /* accent3: ejecutadas, cerradas, metas cumplidas */
+  --celeste: #0F9ED5;       /* accent4: "Programada" (fecha confirmada) */
   --negro: #000000;
-  /* Derivados en la misma línea (tintes/tonos de los anteriores) */
-  --azul-l: #E3E9F0; --acero-l: #DCE8F0;
-  --amarillo-l: #FBF6D2; --amarillo-d: #8C7A12;
-  --rojo-l: #F4E2E2;
-  --verde: #367857; --verde-l: #E0EEE7;   /* "ejecutada / cerrada" */
-  --gris-m: #5C6B7A; --gris-l: #EEF1F5; --gris-ll: #F7F8FA;
-  --borde: #D3D9E0;
-  --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* Derivados (tintes para fondos / tonos para texto legible) */
+  --azul-l: #E2E8EF; --acero-l: #DCEBF2; --celeste-l: #DDF2FB; --celeste-d: #0B6E96;
+  --amarillo-l: #FDF7D1; --amarillo-d: #7D6A00;
+  --rojo-l: #F6E2E3;
+  --verde-l: #E1EFE3;
+  --gris-m: #5B6B7B; --gris-l: #EDF0F4; --gris-ll: #F7F8FA;
+  --borde: #D2D9E1;
+  --sombra: 0 1px 2px rgba(18, 48, 75, .06), 0 2px 8px rgba(18, 48, 75, .05);
+  --font-sans: 'Gordita', 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', 'Consolas', monospace;
   --radius: 10px;
 }
@@ -67,7 +72,7 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .setup-screen {
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(160deg, var(--azul) 0%, #0D1A2B 100%);
+  background: linear-gradient(160deg, var(--azul) 0%, #0A1D2E 100%);
   padding: 24px;
 }
 .setup-card {
@@ -113,9 +118,15 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 10px;
   position: sticky; top: 0; z-index: 50;
-  box-shadow: inset 0 -3px 0 var(--amarillo);
 }
-.qa-header-brand { display: flex; align-items: center; gap: 14px; }
+/* Franja inferior amarillo + rojo: el mismo motivo de bloques de la plantilla */
+.qa-header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+  background: linear-gradient(90deg, var(--amarillo) 0 78%, var(--rojo) 78% 100%);
+}
+.qa-header-brand { display: flex; align-items: center; gap: 12px; }
+/* Barra vertical roja junto al título, como en las portadas de la plantilla */
+.qa-header-brand::before { content: ""; width: 4px; align-self: stretch; min-height: 32px; background: var(--rojo); border-radius: 2px; }
 .qa-header-logo { height: 34px; }
 .qa-header-title { font-size: 16px; font-weight: 600; }
 .qa-header-sub { font-size: 11px; color: rgba(255,255,255,.65); }
@@ -133,7 +144,7 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
   font-size: 12px; font-weight: 600; padding: 4px 28px 4px 10px; border-radius: 7px; min-width: 84px; cursor: pointer;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
 }
-.qa-year-picker select option { color: #1A2F49; background: #fff; }
+.qa-year-picker select option { color: var(--azul); background: #fff; }
 .qa-year-picker select:focus { box-shadow: 0 0 0 2px var(--amarillo); border-color: var(--amarillo); }
 
 /* ================================================================== *
@@ -157,12 +168,38 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
  * ================================================================== */
 .qa-filters-bar {
   background: var(--gris-ll); border-bottom: 1px solid var(--borde);
-  padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+  padding: 8px 20px;
 }
-.qa-filter { display: flex; flex-direction: column; gap: 2px; min-width: 130px; }
+/* Fila compacta siempre visible: botón Filtros + chips de lo que está filtrado */
+.qa-filters-summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qa-filters-toggle {
+  border: 1.5px solid var(--azul); color: var(--azul); background: #fff; font-weight: 600; font-size: 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.qa-filters-toggle:hover, .qa-filters-toggle[aria-expanded="true"] { background: var(--azul); color: #fff; }
+.qa-filters-toggle-icon { font-size: 10px; width: 10px; }
+.qa-filters-count {
+  background: var(--amarillo); color: var(--azul); border-radius: 10px; font-size: 10.5px; font-weight: 700;
+  min-width: 18px; padding: 0 6px; line-height: 18px; text-align: center;
+}
+.qa-filter-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
+.qa-filter-chips-empty { font-size: 11.5px; color: var(--gris-m); }
+.qa-filter-chip {
+  display: inline-flex; align-items: center; gap: 4px; background: var(--azul-l); color: var(--azul);
+  border: 1px solid #C2CFDC; border-radius: 14px; padding: 2px 4px 2px 10px; font-size: 11.5px;
+}
+.qa-filter-chip button {
+  border: none; background: none; color: var(--azul); font-size: 14px; line-height: 1; padding: 0 4px; border-radius: 50%; cursor: pointer;
+}
+.qa-filter-chip button:hover { background: var(--rojo); color: #fff; }
+.qa-filters-body {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px;
+  padding-top: 10px; margin-top: 8px; border-top: 1px dashed var(--borde);
+}
+.qa-filter { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .qa-filter label { font-size: 10px; font-weight: 600; color: var(--gris-m); text-transform: uppercase; letter-spacing: .03em; }
 .qa-filter select { font-size: 12px; padding: 4px 8px; border-color: var(--borde); }
-.qa-filter-clear { margin-left: auto; align-self: flex-end; }
+.qa-filter-clear { margin-left: auto; }
 
 /* ================================================================== *
  * MAIN / SECTIONS
@@ -174,8 +211,9 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 /* Encabezado de bloque dentro del Resumen Ejecutivo (Auditorías / Inspecciones):
    deja explícito que son conjuntos separados, cada uno con sus propias cifras. */
 .qa-band {
-  margin: 4px 0 14px; padding: 7px 14px; background: var(--azul); color: #fff;
-  border-left: 5px solid var(--amarillo); border-radius: 6px;
+  margin: 4px 0 14px; padding: 8px 14px; background: var(--azul); color: #fff;
+  border-left: 5px solid var(--rojo); border-radius: 6px;
+  box-shadow: inset -4px 0 0 var(--amarillo);
   font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
 }
 .qa-resumen-columns + .qa-band { margin-top: 30px; }
@@ -189,13 +227,13 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .qa-kpi-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
 .qa-kpi-card {
   background: #fff; border: 1px solid var(--borde); border-radius: var(--radius);
-  padding: 14px 16px; border-top: 3px solid var(--azul);
+  padding: 14px 16px; border-top: 3px solid var(--azul); box-shadow: var(--sombra);
 }
 .qa-kpi-value { font-size: 24px; font-weight: 600; color: var(--azul); font-family: var(--font-mono); line-height: 1.1; }
 .qa-kpi-label { font-size: 11px; color: var(--gris-m); margin-top: 4px; font-weight: 500; }
-.qa-kpi-hint { font-size: 10px; color: #8593A1; margin-top: 2px; }
+.qa-kpi-hint { font-size: 10px; color: var(--gris-m); margin-top: 2px; }
 .qa-kpi-clickable { cursor: pointer; transition: box-shadow .12s ease, transform .12s ease; }
-.qa-kpi-clickable:hover { box-shadow: 0 2px 10px rgba(26, 47, 73, .18); transform: translateY(-1px); }
+.qa-kpi-clickable:hover { box-shadow: 0 4px 14px rgba(18, 48, 75, .18); transform: translateY(-1px); }
 
 /* Resumen Ejecutivo en 2 columnas: tarjetas KPI a la izquierda (ancho fijo,
    se apilan verticalmente por grupo), gráficas a la derecha (ocupan el
@@ -226,6 +264,30 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .qa-kpi-card--negro { border-top-color: var(--negro); }
 .qa-kpi-card--negro .qa-kpi-value { color: var(--negro); }
 
+/* Franja de indicadores clave (arriba del Resumen Ejecutivo) */
+.qa-hero { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+.qa-hero-card {
+  background: #fff; border: 1px solid var(--borde); border-radius: var(--radius); box-shadow: var(--sombra);
+  padding: 14px 16px 12px; border-left: 5px solid var(--azul-m); display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.qa-hero-label { font-size: 11px; font-weight: 600; color: var(--gris-m); text-transform: uppercase; letter-spacing: .04em; }
+.qa-hero-value { font-family: var(--font-mono); font-size: 32px; font-weight: 600; line-height: 1.05; color: var(--azul); }
+.qa-hero-unit { font-size: 18px; margin-left: 2px; color: var(--gris-m); }
+.qa-hero-sub { font-size: 11px; color: var(--gris-m); line-height: 1.35; }
+.qa-hero-bar { position: relative; height: 8px; background: var(--gris-l); border-radius: 4px; margin: 4px 0 2px; overflow: visible; }
+.qa-hero-bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--azul-m); }
+.qa-hero-bar .meta { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--azul); }
+.qa-hero--ok { border-left-color: var(--verde); }
+.qa-hero--ok .qa-hero-value, .qa-hero--ok .qa-hero-sub b { color: var(--verde); }
+.qa-hero--ok .qa-hero-bar .fill { background: var(--verde); }
+.qa-hero--behind { border-left-color: var(--rojo); }
+.qa-hero--behind .qa-hero-value, .qa-hero--behind .qa-hero-sub b { color: var(--rojo); }
+.qa-hero--behind .qa-hero-bar .fill { background: var(--rojo); }
+.qa-hero--neutral { border-left-color: var(--azul-m); }
+.qa-hero--neutral .qa-hero-value { color: var(--azul-m); }
+.qa-hero--info { border-left-color: var(--celeste); }
+.qa-hero--info .qa-hero-value { color: var(--celeste-d); }
+
 /* Resumen de texto bajo el gauge "Brecha de Ejecución" */
 .qa-brecha-texto { display: flex; gap: 24px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
 .qa-brecha-item { text-align: center; }
@@ -243,14 +305,14 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .qa-chart-grid.cols-1 { grid-template-columns: 1fr; }
 .qa-chart-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
 .qa-chart-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-.qa-chart-card { background: #fff; border: 1px solid var(--borde); border-radius: var(--radius); padding: 16px; }
+.qa-chart-card { background: #fff; border: 1px solid var(--borde); border-radius: var(--radius); padding: 16px; box-shadow: var(--sombra); }
 .qa-chart-title { font-size: 12px; font-weight: 600; color: var(--azul); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 12px; }
 .qa-chart-sub { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--gris-m); font-size: 11px; }
 .qa-chart-canvas-wrap { position: relative; height: 240px; }
 .qa-chart-canvas-wrap.tall { height: 320px; }
 
 /* Tables */
-.qa-table-card { background: #fff; border: 1px solid var(--borde); border-radius: var(--radius); padding: 16px; margin-bottom: 18px; }
+.qa-table-card { background: #fff; border: 1px solid var(--borde); border-radius: var(--radius); padding: 16px; margin-bottom: 18px; box-shadow: var(--sombra); }
 .qa-table-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .qa-table { font-size: 12px; }
 .qa-table thead th { background: var(--azul); color: #fff; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; font-weight: 500; white-space: nowrap; }
@@ -270,7 +332,7 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
  * LOADING OVERLAY
  * ================================================================== */
 .loading-overlay {
-  position: fixed; inset: 0; background: rgba(26,47,73,.55); backdrop-filter: blur(1px);
+  position: fixed; inset: 0; background: rgba(18,48,75,.55); backdrop-filter: blur(1px);
   display: flex; align-items: center; justify-content: center; z-index: 200;
 }
 .loading-box { background: #fff; border-radius: 12px; padding: 26px 34px; text-align: center; color: var(--azul); }
@@ -281,6 +343,7 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
  * ================================================================== */
 @media (max-width: 1400px) {
   .qa-kpi-grid { grid-template-columns: repeat(4, 1fr); }
+  .qa-hero { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .qa-chart-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 900px) {
@@ -288,7 +351,10 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
   .qa-chart-grid.cols-2, .qa-chart-grid.cols-3 { grid-template-columns: 1fr; }
   .qa-resumen-columns { grid-template-columns: 1fr; }
   .qa-header { flex-direction: column; align-items: flex-start; }
-  .qa-filter-clear { margin-left: 0; }
+}
+@media (max-width: 700px) {
+  .qa-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qa-hero-value { font-size: 26px; }
 }
 @media (max-width: 560px) {
   .qa-kpi-grid, .qa-kpi-grid.cols-4, .qa-kpi-grid.cols-3, .qa-kpi-grid.cols-2 { grid-template-columns: 1fr 1fr; }
@@ -303,6 +369,7 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
   .qa-section { display: block !important; }
   body { background: #fff; }
   .qa-header { position: static; background: #fff; color: var(--negro); border-bottom: 2px solid var(--azul); }
+  .qa-header::after, .qa-header-brand::before { display: none; }
   .qa-header-title, .qa-header-sub { color: var(--negro); }
   .qa-chart-card, .qa-table-card, .qa-kpi-card { break-inside: avoid; border: 1px solid #ccc; }
   .qa-chart-grid.cols-2, .qa-chart-grid.cols-3 { grid-template-columns: 1fr 1fr; }
@@ -314,7 +381,7 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .page-link { color: var(--azul); }
 .page-link:hover { color: var(--azul-m); background: var(--azul-l); }
 .page-item.active .page-link { background-color: var(--azul); border-color: var(--azul); color: #fff; }
-.form-select:focus, .form-control:focus { border-color: var(--azul-m); box-shadow: 0 0 0 .2rem rgba(46, 95, 127, .2); }
+.form-select:focus, .form-control:focus { border-color: var(--azul-m); box-shadow: 0 0 0 .2rem rgba(21, 96, 130, .2); }
 
 
 /* ================================================================== *
@@ -327,7 +394,7 @@ code { font-family: var(--font-mono); background: var(--gris-l); padding: 1px 5p
 .qa-cmp-table td:first-child { text-align: left; }
 .qa-cmp-table tr.cmp-group td { background: var(--gris-ll); font-weight: 700; color: var(--azul); text-align: left; text-transform: uppercase; font-size: 10.5px; letter-spacing: .05em; }
 .qa-cmp-table td.cmp-delta { font-weight: 600; white-space: nowrap; }
-.qa-cmp-table td.cmp-good { color: #2d6a4f; }
+.qa-cmp-table td.cmp-good { color: var(--verde); }
 .qa-cmp-table td.cmp-bad { color: var(--rojo); }
 .qa-cmp-table td.cmp-flat { color: var(--gris-m); }
 .qa-cmp-table td.cmp-na { color: var(--gris-m); }

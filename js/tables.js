@@ -21,7 +21,7 @@ QA.tables = (function () {
   };
   const P = QA.config.PALETTE; // paleta central (data.js)
   const ESTADO_COLORS = {
-    POR_EJECUTAR: P.acero, PROGRAMADA: P.aceroM, EJECUTADA: P.verde, NO_EJECUTADA: P.rojo, CANCELADA: P.gris,
+    POR_EJECUTAR: P.acero, PROGRAMADA: P.celesteD, EJECUTADA: P.verde, NO_EJECUTADA: P.rojo, CANCELADA: P.gris,
   };
   const CIERRE_LABELS = { CERRADO: "Cerrada", ABIERTO: "Abierta", CIERRE_PARCIAL: "Cierre Parcial" };
   const CIERRE_COLORS = { CERRADO: P.verde, ABIERTO: P.rojo, CIERRE_PARCIAL: P.amarilloD };
