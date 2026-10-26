@@ -301,6 +301,42 @@ QA.kpiEngine = (function () {
     return countBy(hallazgosReales(findings), keyHallazgoClasificacion);
   }
   function hallazgosPorClasificacionItems(findings, label) { return itemsWhere(hallazgosReales(findings), keyHallazgoClasificacion, label); }
+
+  /* Clasificación estandarizada del reporte (columna AK, oct-2026):
+   * "<INT|EXT>-<código> <categoría>" — INT = proceso interno (área/taller/base
+   * propia), EXT = proveedor externo. Ver Criterios_Clasificacion_Hallazgos.xlsx.
+   * Una etiqueta que no siga el formato (libros anteriores) queda como su propia
+   * categoría, en la serie "Sin proceso". */
+  const RE_CLASIF = /^(INT|EXT)-(\d{2})\s+(.+)$/;
+  const PROCESOS = ["Interno", "Externo", "Sin proceso"];
+  function procesoHallazgo(f) {
+    const m = RE_CLASIF.exec(String(f.clasificacionReporte || "").trim());
+    return m ? (m[1] === "INT" ? "Interno" : "Externo") : "Sin proceso";
+  }
+  function categoriaHallazgo(f) {
+    const t = String(f.clasificacionReporte || "").trim();
+    const m = RE_CLASIF.exec(t);
+    return m ? `${m[2]} ${m[3]}` : (t || "No especificado");
+  }
+  function hallazgosPorClasificacionProceso(findings) {
+    const map = new Map();
+    hallazgosReales(findings).forEach((f) => {
+      const c = categoriaHallazgo(f);
+      if (!map.has(c)) map.set(c, { Interno: 0, Externo: 0, "Sin proceso": 0 });
+      map.get(c)[procesoHallazgo(f)]++;
+    });
+    const labels = [...map.keys()].sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
+    const serie = (p) => labels.map((l) => map.get(l)[p]);
+    return { labels, interno: serie("Interno"), externo: serie("Externo"), sinProceso: serie("Sin proceso") };
+  }
+  function hallazgosPorClasificacionProcesoItems(findings, categoria, proceso) {
+    return hallazgosReales(findings).filter((f) => categoriaHallazgo(f) === categoria && (!proceso || procesoHallazgo(f) === proceso));
+  }
+  function hallazgosPorProceso(findings) {
+    const reales = hallazgosReales(findings);
+    return PROCESOS.map((p) => [p, reales.filter((f) => procesoHallazgo(f) === p).length]).filter(([, n]) => n > 0);
+  }
+  function hallazgosPorProcesoItems(findings, proceso) { return hallazgosReales(findings).filter((f) => procesoHallazgo(f) === proceso); }
   /** Emitidos (por fecha de notificación) vs cerrados (por fecha de cierre de reporte), por mes. */
   function hallazgosTendenciaMensual(findings) {
     findings = hallazgosReales(findings);
@@ -333,6 +369,7 @@ QA.kpiEngine = (function () {
     estadoPrograma, estadoProgramaItems, auditoriasPorCierre, auditoriasPorCierreItems,
     hallazgosReales,
     hallazgosPorEstado, hallazgosPorEstadoItems, hallazgosPorClasificacion, hallazgosPorClasificacionItems,
+    procesoHallazgo, hallazgosPorClasificacionProceso, hallazgosPorClasificacionProcesoItems, hallazgosPorProceso, hallazgosPorProcesoItems,
     hallazgosTendenciaMensual, hallazgosTendenciaItems,
     hallazgosEmitidosVsCerrados,
   };

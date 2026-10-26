@@ -90,6 +90,27 @@ exacto de columnas):
 | `AUDITORIAS_<año>` | Una fila por auditoría/inspección: Estatus, Programada/No programada, Tipo (Auditoria QA / Inspección), Clasificación, Auditado, Ciudad, Modalidad, Fecha Proyectada, Ejecución Reprogramada, Servicios y, opcional, Cierre. |
 | `HALLAZGOS_<año>` | Una fila por hallazgo (NC/OB), vinculado a su auditoría por nombre (si varias auditorías comparten nombre, desempata el ID de la columna `ID AUDITORIA`) — condición, estado (Abierto/Cerrado/Cierre Parcial), causa raíz, fechas de notificación/cierre, etc. |
 
+### Identificador único y vínculo de hallazgos
+
+Cada auditoría/inspección tiene un ID único `AUD-<año>-NNN` / `INS-<año>-NNN`
+(consecutivo por año y tipo; la columna **ID Anterior** conserva el valor
+previo). En `HALLAZGOS_<año>`, **ID AUDITORIA** lleva el ID de su auditoría y
+**ID AUDITORIA ANTERIOR** el previo. El dashboard vincula primero por ese ID
+(si apunta a una sola auditoría con nombre compatible) y, si no, por nombre
+(`js/matching.js#linkFindingsToAudits`), así que los libros antiguos siguen
+funcionando.
+
+### Clasificación del reporte (columna AK)
+
+Etiqueta estandarizada `<INT|EXT>-<código> <categoría>`: **INT** = área,
+taller o base propia de la OMA; **EXT** = proveedor externo (según la
+clasificación de la auditoría). 12 categorías (01 Documentación y registros …
+12 Seguimiento y eficacia de acciones correctivas), asignadas con reglas de
+desempate en orden fijo; definiciones y asignación hallazgo por hallazgo en
+`Criterios_Clasificacion_Hallazgos.xlsx` (fuera del repo). La pestaña
+Hallazgos y el comparativo separan interno vs externo
+(`js/kpiEngine.js#hallazgosPorClasificacionProceso`).
+
 ### ¿Cuándo se considera "ejecutada" una auditoría?
 
 Ya no se infiere de nada: viene directo de la columna **Estatus** del

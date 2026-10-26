@@ -38,10 +38,12 @@ QA.comparativo = (function () {
       K.porClasificacion(aud).forEach(([label, n]) => { clasificacion[label] = n; });
 
       const nc = reales.filter((f) => f.condicion === "NC").length;
+      const internos = reales.filter((f) => K.procesoHallazgo(f) === "Interno").length;
+      const externos = reales.filter((f) => K.procesoHallazgo(f) === "Externo").length;
       const ob = reales.filter((f) => f.condicion === "OB").length;
       const cerradosPct = reales.length ? Math.round((k.hallazgosCerrados / reales.length) * 1000) / 10 : null;
       const ratio = k.ejecutadas ? Math.round((reales.length / k.ejecutadas) * 10) / 10 : null;
-      perYear[anio] = { k, ki, nc, ob, cerradosPct, ratio, ejecutadasPorMes, clasificacion, enCurso: anio === today.getFullYear() };
+      perYear[anio] = { k, ki, nc, ob, internos, externos, cerradosPct, ratio, ejecutadasPorMes, clasificacion, enCurso: anio === today.getFullYear() };
     });
     return { years, perYear, today };
   }
@@ -68,6 +70,8 @@ QA.comparativo = (function () {
     { label: "Total de hallazgos", get: (d) => d.k.hallazgosTotal },
     { label: "No conformidades (NC)", get: (d) => d.nc, better: "down" },
     { label: "Observaciones (OB)", get: (d) => d.ob },
+    { label: "En procesos internos", get: (d) => d.internos, better: "down" },
+    { label: "En procesos externos (proveedores)", get: (d) => d.externos },
     { label: "Abiertos", get: (d) => d.k.hallazgosAbiertos, better: "down" },
     { label: "Cerrados", get: (d) => d.k.hallazgosCerrados, better: "up" },
     { label: "% de hallazgos cerrados", get: (d) => d.cerradosPct, pct: true, better: "up" },

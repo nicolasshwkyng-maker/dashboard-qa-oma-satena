@@ -746,7 +746,8 @@
       onEstadoPrograma: (label) => openKpiModal(`Estado del Programa — ${label}`, K.estadoProgramaItems(auditoriasSoloTipo, label), "audits"),
       onAuditoriasPorCierre: (label) => openKpiModal(`Auditorías por Cierre — ${label}`, K.auditoriasPorCierreItems(auditoriasSoloTipo, label), "audits"),
       onHallazgosEstado: (label) => openKpiModal(`Hallazgos — ${label}`, K.hallazgosPorEstadoItems(findings, label), "findings"),
-      onHallazgosClasificacion: (label) => openKpiModal(`Hallazgos por Causa Raíz — ${label}`, K.hallazgosPorClasificacionItems(findings, label), "findings"),
+      onHallazgosClasificacion: (label, datasetLabel) => openKpiModal(`Hallazgos ${datasetLabel ? datasetLabel.toLowerCase() + "s" : ""} — ${label}`, K.hallazgosPorClasificacionProcesoItems(findings, label, datasetLabel), "findings"),
+      onHallazgosProceso: (label) => openKpiModal(`Hallazgos — proceso ${label.toLowerCase()}`, K.hallazgosPorProcesoItems(findings, label), "findings"),
       onHallazgosTendencia: (label, datasetLabel, monthIndex) => {
         const serie = datasetLabel === "Cerrados" ? "cerrados" : "emitidos";
         openKpiModal(`Hallazgos ${datasetLabel} — ${u.MONTH_NAMES[monthIndex]}`, K.hallazgosTendenciaItems(findings, monthIndex, serie), "findings");

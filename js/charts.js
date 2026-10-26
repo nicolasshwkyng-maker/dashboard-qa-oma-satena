@@ -283,13 +283,28 @@ QA.charts = (function () {
     getOrCreate("chartHallazgosEstado", doughnutConfig(pairs.map(p => p[0]), pairs.map(p => p[1]), pairs.map(p => colorFor(p[0])), onClick));
   }
 
-  function renderHallazgosClasificacion(pairs, onClick) {
-    getOrCreate("chartHallazgosClasificacion", barConfig({
-      labels: pairs.map(p => (p[0] || "").length > 38 ? p[0].slice(0, 35) + "…" : p[0]),
-      horizontal: true,
-      datasets: [{ label: "Hallazgos", data: pairs.map(p => p[1]), backgroundColor: PALETTE.rojo, borderRadius: 4 }],
-      onClick: onClick ? (label, dsLabel, index) => onClick(pairs[index] ? pairs[index][0] : label, dsLabel, index) : undefined,
-    }));
+  /** Clasificación del reporte: una barra por categoría, apilada por proceso
+   * (Interno / Externo; "Sin proceso" solo si hay etiquetas sin el formato). */
+  function renderHallazgosClasificacion(d, onClick) {
+    const short = (l) => (l.length > 60 ? l.slice(0, 57) + "…" : l);
+    const datasets = [
+      { label: "Interno", data: d.interno, backgroundColor: PALETTE.azulM, borderRadius: 3 },
+      { label: "Externo", data: d.externo, backgroundColor: PALETTE.amarillo, borderRadius: 3 },
+      { label: "Sin proceso", data: d.sinProceso, backgroundColor: PALETTE.grisM, borderRadius: 3 },
+    ].filter((ds) => ds.data.some((n) => n > 0));
+    const cfg = barConfig({
+      labels: d.labels.map(short), horizontal: true, stacked: true, datasets,
+      tooltipFooter: (items) => "Total: " + items.reduce((n, i) => n + i.parsed.x, 0),
+      onClick: onClick ? (label, dsLabel, index) => onClick(d.labels[index] || label, dsLabel, index) : undefined,
+    });
+    cfg.options.plugins.tooltip.callbacks.title = (items) => (items[0] ? d.labels[items[0].dataIndex] : "");
+    getOrCreate("chartHallazgosClasificacion", cfg);
+  }
+
+  /** Dona: hallazgos de procesos internos vs externos. */
+  function renderHallazgosProceso(pairs, onClick) {
+    const color = { Interno: PALETTE.azulM, Externo: PALETTE.amarillo, "Sin proceso": PALETTE.grisM };
+    getOrCreate("chartHallazgosProceso", doughnutConfig(pairs.map(p => p[0]), pairs.map(p => p[1]), pairs.map(p => color[p[0]] || PALETTE.grisM), onClick));
   }
 
   function renderHallazgosTendencia(d, onClick) {
@@ -325,7 +340,8 @@ QA.charts = (function () {
     renderEstadoPrograma(QA.kpiEngine.estadoPrograma(auditoriasSoloTipo), handlers.onEstadoPrograma);
     renderAuditoriasPorCierre(QA.kpiEngine.auditoriasPorCierre(auditoriasSoloTipo), handlers.onAuditoriasPorCierre);
     renderHallazgosEstado(QA.kpiEngine.hallazgosPorEstado(findings), handlers.onHallazgosEstado);
-    renderHallazgosClasificacion(QA.kpiEngine.hallazgosPorClasificacion(findings), handlers.onHallazgosClasificacion);
+    renderHallazgosClasificacion(QA.kpiEngine.hallazgosPorClasificacionProceso(findings), handlers.onHallazgosClasificacion);
+    renderHallazgosProceso(QA.kpiEngine.hallazgosPorProceso(findings), handlers.onHallazgosProceso);
     renderHallazgosTendencia(QA.kpiEngine.hallazgosTendenciaMensual(findings), handlers.onHallazgosTendencia);
 
     // Auditorías (sección propia): solo tipo AUDITORIA

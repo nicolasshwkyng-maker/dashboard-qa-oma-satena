@@ -359,10 +359,27 @@ QA.matching = (function () {
     // la similitud de texto por cada fila de hallazgo (varias filas
     // comparten el mismo idAuditoria = misma auditoría, varios hallazgos).
     const cache = new Map();
+    // Desde oct-2026 cada auditoría tiene un ID único (AUD-/INS-<año>-NNN) y la
+    // columna "ID AUDITORIA" del hallazgo lleva ese mismo ID: si apunta a UNA
+    // sola auditoría con nombre compatible, ese es el vínculo (más confiable que
+    // el nombre). Libros anteriores (IDs repetidos o de otra numeración) caen
+    // al vínculo por nombre de siempre.
+    const auditsById = new Map();
+    audits.forEach((a) => {
+      if (a.idAuditado === null || a.idAuditado === undefined || a.idAuditado === "") return;
+      const k = String(a.idAuditado).trim();
+      if (!auditsById.has(k)) auditsById.set(k, []);
+      auditsById.get(k).push(a);
+    });
     const FINDINGS_MATCH_THRESHOLD = 0.35; // más permisivo que el general: es un enlace informativo, no determina KPIs de ejecución.
 
     findings.forEach((finding) => {
       const cacheKey = finding.idAuditoria;
+      const porId = auditsById.get(String(finding.idAuditoria).trim());
+      if (!cache.has(cacheKey) && porId && porId.length === 1 &&
+          (u.normalize(porId[0].auditado) === u.normalize(finding.auditado) || u.textSimilarity(finding.auditado, porId[0].auditado) >= FINDINGS_MATCH_THRESHOLD)) {
+        cache.set(cacheKey, { audit: porId[0], score: 1 });
+      }
       if (!cache.has(cacheKey)) {
         const category = resolveCategory(finding.clasificacionRaw);
         const pool = (category && auditsByCategory.get(category)) || audits;
