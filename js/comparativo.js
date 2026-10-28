@@ -53,6 +53,7 @@ QA.comparativo = (function () {
     { group: "Programa" },
     { label: "Total de registros", get: (d) => d.k.totalAuditorias },
     { label: "Programados", get: (d) => d.k.programadas },
+    { label: "Base del cronograma (programados − cancelados)", get: (d) => d.k.baseCronograma },
     { label: "No programados (extraordinarios)", get: (d) => d.k.extraordinarias },
     { group: "Ejecución" },
     { label: "Ejecutados", get: (d) => d.k.ejecutadas, better: "up" },

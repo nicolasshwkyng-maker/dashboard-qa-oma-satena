@@ -355,7 +355,7 @@
       }),
       heroCardHtml({
         label: "Auditorías ejecutadas", value: k.ejecutadas, listKey: "ejecutadas", tone: "neutral",
-        sub: `${k.ejecutadasProgramadas} de ${k.programadas} programadas · ${k.extraordinariasEjecutadas} no programadas`,
+        sub: `${k.ejecutadasProgramadas} de ${k.baseCronograma} programadas${k.canceladasProgramadas ? ` (sin ${k.canceladasProgramadas} canceladas)` : ""} · ${k.extraordinariasEjecutadas} no programadas`,
       }),
       heroCardHtml({
         label: "Pendientes por ejecutar", value: k.porEjecutar, listKey: "porEjecutar", tone: "info",
@@ -385,7 +385,7 @@
         kpiCardHtml("Por Ejecutar", k.porEjecutar, k.estatusProgramada ? `${k.estatusProgramada} con fecha confirmada (Programada)` : null, "porEjecutar", "audits", "acero"),
         kpiCardHtml("Programada (fecha confirmada)", k.estatusProgramada, "Pendientes con fecha confirmada — incluidas en Por Ejecutar", "estatusProgramada", "audits", "acero"),
         kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits", "acero"),
-        kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits", "acero"),
+        kpiCardHtml("Canceladas", k.canceladas, "No penalizan: salen de la base del cronograma", "canceladas", "audits", "acero"),
       ].join("")),
       // Cumplimiento y avance: ya están en la franja de indicadores clave (renderHero).
       kpiGroupHtml("Cierre de Auditorías Ejecutadas", [
@@ -428,10 +428,10 @@
         kpiCardHtml("Por Ejecutar", k.porEjecutar, k.estatusProgramada ? `${k.estatusProgramada} con fecha confirmada (Programada)` : null, "porEjecutar", "audits", "acero"),
         kpiCardHtml("Programada (fecha confirmada)", k.estatusProgramada, "Pendientes con fecha confirmada — incluidas en Por Ejecutar", "estatusProgramada", "audits", "acero"),
         kpiCardHtml("No Ejecutadas", k.noEjecutadas, null, "noEjecutadas", "audits", "acero"),
-        kpiCardHtml("Canceladas", k.canceladas, null, "canceladas", "audits", "acero"),
+        kpiCardHtml("Canceladas", k.canceladas, "No penalizan: salen de la base del cronograma", "canceladas", "audits", "acero"),
       ].join("")),
       kpiGroupHtml("Cumplimiento", [
-        kpiCardHtml("% Cumplimiento Cronograma Original", k.cumplimientoOriginalPct + "%", "Ejecutadas programadas / Total programado (nunca > 100%)", "ejecutadasProgramadas", "audits", "amarillo"),
+        kpiCardHtml("% Cumplimiento Cronograma Original", k.cumplimientoOriginalPct + "%", `Ejecutadas programadas / ${k.baseCronograma} programadas no canceladas (nunca > 100%)`, "ejecutadasProgramadas", "audits", "amarillo"),
         kpiCardHtml("% Avance Total", k.avanceTotalPct + "%", "Incluye no programadas ejecutadas — puede superar 100%", "ejecutadas", "audits", "amarillo"),
       ].join("")),
       kpiGroupHtml("Alertas", [

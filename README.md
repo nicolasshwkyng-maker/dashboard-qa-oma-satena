@@ -138,6 +138,16 @@ año — el indicador puede superar el 100% (ver
 `js/kpiEngine.js#computeKpis`, tarjetas "% Cumplimiento Cronograma
 Original" vs "% Avance Total del Programa").
 
+### Auditorías canceladas
+
+Estatus **Cancelada** = modificación del programa: la auditoría ya no se
+va a ejecutar. Sale de la **base del cronograma** (programadas −
+canceladas, `js/kpiEngine.js#baseCronograma`), que es el denominador de
+"% Cumplimiento Cronograma Original", "% Avance Total", la meta a hoy de
+los gauges y la barra "Programadas" de los gráficos por mes y por
+ubicación. Se sigue mostrando aparte en la tarjeta "Canceladas". Las
+**No Ejecutadas** sí permanecen en la base, así que siguen penalizando.
+
 ### Fecha de referencia de cada auditoría
 
 Columna **Ejecución Reprogramada** si tiene valor: si no, columna **Fecha

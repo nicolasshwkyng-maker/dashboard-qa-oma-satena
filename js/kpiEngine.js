@@ -35,6 +35,17 @@ QA.kpiEngine = (function () {
   function porTipoRegistro(audits, tipo) { return audits.filter(a => a.tipoRegistro === tipo); }
 
   /* ------------------------------------------------------------------ *
+   * Base del cronograma: lo programado MENOS lo cancelado. Una auditoría
+   * cancelada es una modificación del programa (ya no se va a ejecutar),
+   * así que sale del denominador de los % de cumplimiento/avance y de la
+   * meta a hoy; se sigue mostrando aparte en la tarjeta "Canceladas".
+   * Las "No Ejecutadas" sí permanecen en la base: esas sí penalizan.
+   * ------------------------------------------------------------------ */
+  function baseCronograma(audits) {
+    return audits.filter(a => !a.esExtraordinaria && a.estadoCalculado !== EST.CANCELADA);
+  }
+
+  /* ------------------------------------------------------------------ *
    * KPIs principales (tarjetas superiores del dashboard)
    * ------------------------------------------------------------------ */
   function computeKpis(audits, findings, today) {
@@ -50,6 +61,8 @@ QA.kpiEngine = (function () {
     const estatusProgramada = audits.filter(a => a.estadoCalculado === EST.PROGRAMADA);
     const noEjecutadas = audits.filter(a => a.estadoCalculado === EST.NO_EJECUTADA);
     const canceladas = audits.filter(a => a.estadoCalculado === EST.CANCELADA);
+    const canceladasProgramadas = canceladas.filter(a => !a.esExtraordinaria);
+    const base = baseCronograma(audits);
 
     const en30dias = (() => {
       const limite = new Date(today.getTime() + QA.config.KPI.PROXIMOS_DIAS * 86400000);
@@ -65,13 +78,13 @@ QA.kpiEngine = (function () {
     const auditoriasAbiertas = audits.filter(a => a.cierreRollup === CIERRE.ABIERTO);
     const auditoriasCierreParcial = audits.filter(a => a.cierreRollup === CIERRE.CIERRE_PARCIAL);
 
-    // % Cumplimiento del CRONOGRAMA ORIGINAL: solo cuenta lo programado
-    // desde el inicio — nunca puede superar 100%.
-    const cumplimientoOriginal = programadas.length ? (ejecutadasProgramadas.length / programadas.length) * 100 : 0;
+    // % Cumplimiento del CRONOGRAMA ORIGINAL: ejecutadas programadas sobre
+    // la base del cronograma (programadas − canceladas) — nunca supera 100%.
+    const cumplimientoOriginal = base.length ? (ejecutadasProgramadas.length / base.length) * 100 : 0;
     // % Avance TOTAL del programa: al numerador de arriba se le suman las
     // extraordinarias ejecutadas — SÍ puede superar 100%, mostrando
     // explícitamente cuánto aportaron las auditorías no programadas.
-    const avanceTotal = programadas.length ? ((ejecutadasProgramadas.length + extraordinariasEjecutadas.length) / programadas.length) * 100 : 0;
+    const avanceTotal = base.length ? ((ejecutadasProgramadas.length + extraordinariasEjecutadas.length) / base.length) * 100 : 0;
 
     return {
       programadas: programadas.length,
@@ -83,6 +96,8 @@ QA.kpiEngine = (function () {
       estatusProgramada: estatusProgramada.length,
       noEjecutadas: noEjecutadas.length,
       canceladas: canceladas.length,
+      canceladasProgramadas: canceladasProgramadas.length,
+      baseCronograma: base.length,
       proximos30Dias: en30dias.length,
       cumplimientoOriginalPct: Math.round(cumplimientoOriginal * 10) / 10,
       avanceTotalPct: Math.round(avanceTotal * 10) / 10,
@@ -99,7 +114,7 @@ QA.kpiEngine = (function () {
       lists: {
         totalAuditorias: audits,
         programadas, ejecutadas, ejecutadasProgramadas, extraordinarias, extraordinariasEjecutadas,
-        porEjecutar, estatusProgramada, noEjecutadas, canceladas, proximos30Dias: en30dias,
+        porEjecutar, estatusProgramada, noEjecutadas, canceladas, canceladasProgramadas, baseCronograma: base, proximos30Dias: en30dias,
         hallazgosTotal: findings, hallazgosAbiertos, hallazgosCerrados, hallazgosCierreParcial,
         auditoriasCerradas, auditoriasAbiertas, auditoriasCierreParcial,
       },
@@ -108,9 +123,9 @@ QA.kpiEngine = (function () {
 
   /* ------------------------------------------------------------------ *
    * Avance esperado vs real, con corte a hoy (para el gauge "Brecha de
-   * Ejecución"). Solo considera auditorías PROGRAMADAS (las extraordinarias
-   * no tenían fecha comprometida desde el inicio, así que no aplican a
-   * "cuánto debería llevar hoy" del cronograma original).
+   * Ejecución"). Solo considera la base del cronograma (programadas no
+   * canceladas): las extraordinarias no tenían fecha comprometida desde el
+   * inicio y las canceladas ya no se van a ejecutar.
    *   - esperadoPct: % de lo programado cuya fecha ya pasó (debería estar
    *     ejecutado a esta altura del cronograma).
    *   - realPct: % de lo programado que realmente está ejecutado hoy
@@ -119,7 +134,7 @@ QA.kpiEngine = (function () {
    * ------------------------------------------------------------------ */
   function avanceEsperadoVsReal(audits, today) {
     today = today || new Date();
-    const programadas = audits.filter(a => !a.esExtraordinaria);
+    const programadas = baseCronograma(audits);
     const total = programadas.length;
     const deberianEstarHechas = programadas.filter(a => a.fechaProgramada && a.fechaProgramada.getTime() <= today.getTime()).length;
     const ejecutadasProgramadas = programadas.filter(a => a.estadoCalculado === EST.EJECUTADA).length;
@@ -140,7 +155,7 @@ QA.kpiEngine = (function () {
    * superaron) la brecha contra la meta. Puede superar el 100%. */
   function avanceEsperadoVsRealConNoProgramadas(audits, today) {
     today = today || new Date();
-    const programadas = audits.filter(a => !a.esExtraordinaria);
+    const programadas = baseCronograma(audits);
     const extraordinarias = audits.filter(a => a.esExtraordinaria);
     const total = programadas.length;
     const deberianEstarHechas = programadas.filter(a => a.fechaProgramada && a.fechaProgramada.getTime() <= today.getTime()).length;
@@ -163,6 +178,7 @@ QA.kpiEngine = (function () {
    *   - programadas: se ubican por su fecha proyectada ORIGINAL
    *     (fechaProgramada, columna I) — una auditoría planeada para febrero
    *     cuenta como programada de febrero aunque se haya ejecutado en marzo.
+   *     Las canceladas no cuentan (ver baseCronograma).
    *   - ejecutadas / extraordinarias (no programadas ejecutadas): se ubican
    *     por su fecha de referencia (statusEngine#computeFechaReferencia:
    *     ejecución real si existe, si no la proyectada).
@@ -171,7 +187,7 @@ QA.kpiEngine = (function () {
   function programaPorMes(audits) {
     const buckets = Array.from({ length: 12 }, () => ({ programadas: 0, ejecutadas: 0, extraordinarias: 0 }));
     audits.forEach((a) => {
-      if (!a.esExtraordinaria && a.fechaProgramada) buckets[a.fechaProgramada.getMonth()].programadas++;
+      if (!a.esExtraordinaria && a.estadoCalculado !== EST.CANCELADA && a.fechaProgramada) buckets[a.fechaProgramada.getMonth()].programadas++;
       if (a.estadoCalculado !== EST.EJECUTADA || !a.fechaReferencia) return;
       const m = a.fechaReferencia.getMonth();
       if (a.esExtraordinaria) buckets[m].extraordinarias++; else buckets[m].ejecutadas++;
@@ -190,7 +206,7 @@ QA.kpiEngine = (function () {
    * "programadas" | "ejecutadas" | "extraordinarias". */
   function auditoriasDeMes(audits, monthIndex, categoria) {
     return audits.filter((a) => {
-      if (categoria === "programadas") return !a.esExtraordinaria && !!a.fechaProgramada && a.fechaProgramada.getMonth() === monthIndex;
+      if (categoria === "programadas") return !a.esExtraordinaria && a.estadoCalculado !== EST.CANCELADA && !!a.fechaProgramada && a.fechaProgramada.getMonth() === monthIndex;
       if (a.estadoCalculado !== EST.EJECUTADA || !a.fechaReferencia || a.fechaReferencia.getMonth() !== monthIndex) return false;
       return categoria === "extraordinarias" ? a.esExtraordinaria : (categoria === "ejecutadas" && !a.esExtraordinaria);
     });
@@ -229,7 +245,7 @@ QA.kpiEngine = (function () {
   }
 
   /** Programadas vs ejecutadas por ubicación (ciudad): mismas 3 series que
-   * programaPorMes — programadas (todas las programadas del lugar),
+   * programaPorMes — programadas (las programadas no canceladas del lugar),
    * ejecutadas (programadas ya ejecutadas) y extraordinarias (no
    * programadas ejecutadas). Ordenado de mayor a menor actividad. */
   function programaPorUbicacion(audits) {
@@ -239,7 +255,7 @@ QA.kpiEngine = (function () {
       if (!map.has(key)) map.set(key, { programadas: 0, ejecutadas: 0, extraordinarias: 0 });
       const b = map.get(key);
       const ejecutada = a.estadoCalculado === EST.EJECUTADA;
-      if (!a.esExtraordinaria) { b.programadas++; if (ejecutada) b.ejecutadas++; }
+      if (!a.esExtraordinaria) { if (a.estadoCalculado !== EST.CANCELADA) b.programadas++; if (ejecutada) b.ejecutadas++; }
       else if (ejecutada) b.extraordinarias++;
     });
     const rows = [...map.entries()].sort((x, y) =>
@@ -255,7 +271,7 @@ QA.kpiEngine = (function () {
    * "programadas" | "ejecutadas" | "extraordinarias". */
   function auditoriasDeUbicacion(audits, label, categoria) {
     return itemsWhere(audits, keyUbicacion, label).filter((a) => {
-      if (categoria === "programadas") return !a.esExtraordinaria;
+      if (categoria === "programadas") return !a.esExtraordinaria && a.estadoCalculado !== EST.CANCELADA;
       if (a.estadoCalculado !== EST.EJECUTADA) return false;
       return categoria === "extraordinarias" ? a.esExtraordinaria : (categoria === "ejecutadas" && !a.esExtraordinaria);
     });
@@ -363,7 +379,7 @@ QA.kpiEngine = (function () {
   }
 
   return {
-    computeKpis, avanceEsperadoVsReal, avanceEsperadoVsRealConNoProgramadas, programaPorMes, auditoriasDeMes,
+    computeKpis, baseCronograma, avanceEsperadoVsReal, avanceEsperadoVsRealConNoProgramadas, programaPorMes, auditoriasDeMes,
     porClasificacion, porModalidad, porUbicacion, programaPorUbicacion, auditoriasDeUbicacion, faaAuditorias, porTipoRegistro,
     auditoriasPorClasificacionItems, auditoriasPorModalidadItems, auditoriasPorUbicacionItems,
     estadoPrograma, estadoProgramaItems, auditoriasPorCierre, auditoriasPorCierreItems,
